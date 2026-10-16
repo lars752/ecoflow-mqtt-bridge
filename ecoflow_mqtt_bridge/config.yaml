@@ -1,22 +1,31 @@
 name: "EcoFlow MQTT Bridge"
-version: "1.0.0"
+description: "Vollständige Abbildung von EcoFlow-Geräten (Delta Pro, PowerStream etc.) via MQTT inkl. Home Assistant Auto-Discovery"
+version: "1.0.2"
 slug: "ecoflow_mqtt_bridge"
-description: "Verbindet EcoFlow-Geräte über MQTT mit Home Assistant"
-url: "https://github.com/lars752/ecoflow-mqtt-bridge"
-startup: application
-boot: auto
+init: false
 arch:
   - aarch64
   - amd64
   - armhf
   - armv7
+  - i386
+startup: application
+boot: auto
 options:
-  mqtt_host: "core-mosquitto"
+  mqtt_broker: "192.168.40.101"
   mqtt_port: 1883
-  mqtt_user: ""
+  mqtt_user: "mqtt-user"
   mqtt_password: ""
+  ecoflow_email: ""
+  ecoflow_password: ""
+  device_sn: "HW21Z00000001"
+  ha_discovery: true
 schema:
-  mqtt_host: str
-  mqtt_port: int
-  mqtt_user: str?
-  mqtt_password: password?
+  mqtt_broker: str
+  mqtt_port: port
+  mqtt_user: str
+  mqtt_password: password
+  ecoflow_email: email
+  ecoflow_password: password
+  device_sn: str
+  ha_discovery: bool
