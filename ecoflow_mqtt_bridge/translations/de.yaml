@@ -1,0 +1,25 @@
+configuration:
+  mqtt_broker:
+    name: MQTT Broker Adresse
+    description: Hostname (z. B. core-mosquitto) oder lokale IP-Adresse (z. B. 192.168.40.101) des MQTT Brokers.
+  mqtt_port:
+    name: MQTT Port
+    description: Standardport für unverschlüsseltes MQTT ist 1883.
+  mqtt_user:
+    name: MQTT Benutzername
+    description: Benutzername für den lokalen Mosquitto Broker.
+  mqtt_password:
+    name: MQTT Passwort
+    description: Passwort für den lokalen Mosquitto Broker (am besten ohne Sonderzeichen wie #).
+  ecoflow_email:
+    name: EcoFlow E-Mail-Adresse
+    description: E-Mail-Adresse deines EcoFlow-Benutzerkontos (App-Login).
+  ecoflow_password:
+    name: EcoFlow Passwort
+    description: Passwort deines EcoFlow-Benutzerkontos.
+  device_sn:
+    name: Geräte-Seriennummer
+    description: Seriennummer deiner EcoFlow (z. B. HW21Z00000001). Mehrere Seriennummern können kommagetrennt angegeben werden.
+  ha_discovery:
+    name: Home Assistant Auto-Discovery
+    description: Wenn aktiviert, werden alle Sensoren automatisch in Home Assistant unter MQTT angelegt.
