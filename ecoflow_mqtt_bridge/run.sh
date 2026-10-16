@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+!/usr/bin/with-contenv bash
 # ==============================================================================
 # Startskript für das EcoFlow MQTT Bridge Add-on
 # Erstellt ein virtuelles @iobroker/adapter-core Modul und startet den Adapter.
