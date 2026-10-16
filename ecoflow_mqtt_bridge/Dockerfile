@@ -11,9 +11,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --production
 
-# Copy source code and run script
+# Copy source code and files
 COPY src/ ./src/
-COPY run.sh /
-RUN chmod +x /run.sh
+COPY adapter_mock.js ./
+COPY config.yaml ./
 
-CMD [ "/run.sh" ]
+# Run Node.js directly as PID 1, bypassing s6-overlay
+ENTRYPOINT ["node", "src/index.js"]
