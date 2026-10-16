@@ -1,4 +1,4 @@
-!/usr/bin/with-contenv bash
+#!/usr/bin/with-contenv bash
 # ==============================================================================
 # Startskript für das EcoFlow MQTT Bridge Add-on
 # Erstellt ein virtuelles @iobroker/adapter-core Modul und startet den Adapter.
@@ -27,6 +27,6 @@ EOF
 
 echo "[Info] Adapter-Mock erfolgreich installiert."
 
-# Starte den EcoFlow-Adapter als eigenständigen Node.js-Prozess
+# Starte die Node.js-Anwendung aus dem src-Verzeichnis
 cd /app
-exec node main.js --adapter-object ecoflow-mqtt.0
+exec node src/index.js
