@@ -18,5 +18,5 @@ options:
 schema:
   mqtt_host: str
   mqtt_port: int
-  mqtt_user: string?
+  mqtt_user: str?
   mqtt_password: password?
