@@ -23,6 +23,9 @@ function readOptionsFile(path) {
 
 const str = (v) => (typeof v === 'string' ? v.trim() : '');
 
+// Platzhalter-Seriennummern aus den Standardwerten (z. B. "HW51ZOH4S_ERGAENZEN") werden übersprungen
+const PLACEHOLDER_SN = /ERG(AE|Ä)NZEN/i;
+
 /** Validiert und normalisiert die rohen Add-on-Optionen (rein, ohne I/O). */
 function normalize(raw, version = '0.0.0') {
   const errors = [];
@@ -32,11 +35,16 @@ function normalize(raw, version = '0.0.0') {
   const email = str(raw.ecoflow_email);
   const emailPassword = typeof raw.ecoflow_password === 'string' ? raw.ecoflow_password : '';
   const devices = [];
+  const skippedDevices = [];
   for (const [i, d] of (Array.isArray(raw.devices) ? raw.devices : []).entries()) {
     const entry = typeof d === 'string' ? { sn: d } : d || {};
     const sn = str(entry.sn);
     if (!sn) {
       if (typeof d !== 'string') errors.push(`devices[${i}]: sn fehlt`);
+      continue;
+    }
+    if (PLACEHOLDER_SN.test(sn)) {
+      skippedDevices.push({ sn, name: str(entry.name) || null });
       continue;
     }
     const rawType = str(entry.type);
@@ -46,7 +54,7 @@ function normalize(raw, version = '0.0.0') {
       if (!type) errors.push(`devices[${i}] (${sn}): unbekannter Gerätetyp "${rawType}". Erlaubt: ${listTypes().join(', ')}`);
     }
     if (devices.some((x) => x.sn === sn)) errors.push(`devices[${i}]: Seriennummer ${sn} doppelt`);
-    devices.push({ sn, type, name: str(entry.name) || null });
+    devices.push({ sn, type, name: str(entry.name) || null, ha: entry.ha_enable !== false, debug: entry.debug === true });
   }
 
   // Anmeldeart: 'api_key' (Developer API) oder 'email' (App-Login wie im ioBroker-Adapter)
@@ -66,9 +74,37 @@ function normalize(raw, version = '0.0.0') {
     if (!email) errors.push('ecoflow_email fehlt');
     if (!emailPassword) errors.push('ecoflow_password fehlt');
     if (!devices.length) {
-      errors.push('Im E-Mail-Modus gibt es keine automatische Geräteliste: Seriennummern bitte in "devices" eintragen');
+      errors.push(
+        skippedDevices.length
+          ? `Bei allen ${skippedDevices.length} Geräten fehlt noch die Seriennummer (Platzhalter "…ERGAENZEN"). Bitte unter "Geräte" die vollständigen Seriennummern eintragen`
+          : 'Im E-Mail-Modus gibt es keine automatische Geräteliste: Seriennummern bitte in "devices" eintragen',
+      );
     }
   }
+
+  // Verbindungseinstellungen der EcoFlow-Cloud (E-Mail-Modus), Vorgabe wie im ioBroker-Adapter
+  let ecoflowBroker = null;
+  const brokerRaw = str(raw.ecoflow_mqtt_broker);
+  if (brokerRaw) {
+    const protocol = /^mqtt:\/\//i.test(brokerRaw) ? 'mqtt' : 'mqtts';
+    const brokerHost = brokerRaw.replace(/^[a-z]+:\/\//i, '').replace(/\/+$/, '').replace(/:\d+$/, '');
+    const brokerPort = Number(raw.ecoflow_mqtt_port) || (protocol === 'mqtts' ? 8883 : 1883);
+    if (!brokerHost) errors.push(`ecoflow_mqtt_broker ungültig: ${raw.ecoflow_mqtt_broker}`);
+    else if (!Number.isInteger(brokerPort) || brokerPort < 1 || brokerPort > 65535) errors.push(`ecoflow_mqtt_port ungültig: ${raw.ecoflow_mqtt_port}`);
+    else ecoflowBroker = { protocol, host: brokerHost, port: brokerPort };
+  }
+  // Automatisch erzeugte Zugangsdaten (siehe Anmeldedaten erstellen)
+  const presetUser = str(raw.ecoflow_mqtt_username);
+  const presetPass = typeof raw.ecoflow_mqtt_password === 'string' ? raw.ecoflow_mqtt_password : '';
+  const presetMqtt =
+    presetUser && presetPass
+      ? {
+          account: presetUser,
+          password: presetPass,
+          userId: str(raw.ecoflow_mqtt_user_id) || null,
+          clientId: str(raw.ecoflow_mqtt_client_id) || null,
+        }
+      : null;
 
   const apiHost = str(raw.api_host).replace(/^https?:\/\//, '').replace(/\/+$/, '') || 'api-e.ecoflow.com';
 
@@ -120,6 +156,9 @@ function normalize(raw, version = '0.0.0') {
     emailPassword,
     apiHost,
     devices,
+    skippedDevices,
+    ecoflowBroker,
+    presetMqtt,
     pollInterval,
     mqtt: {
       host,

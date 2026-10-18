@@ -103,7 +103,7 @@ test('normalize: gültige Konfiguration mit Defaults', () => {
   assert.equal(c.accessKey, 'AK');
   assert.equal(c.mqtt.host, 'broker');
   assert.equal(c.pollInterval, 30);
-  assert.deepEqual(c.devices, [{ sn: 'A', type: null, name: null }]);
+  assert.deepEqual(c.devices, [{ sn: 'A', type: null, name: null, ha: true, debug: false }]);
   assert.equal(c.apiHost, 'api-e.ecoflow.com');
   assert.equal(c.haDiscovery, true);
   assert.equal(c.logLevel, 'info');
@@ -146,9 +146,9 @@ test('normalize: devices als Objekte mit Typ (inkl. Alias) und Fehlerfälle', ()
     devices: [{ sn: 'HW51', type: 'pstream800', name: 'Balkon' }, { sn: 'R331', type: 'delta2' }, 'X1'],
   });
   assert.deepEqual(c.devices, [
-    { sn: 'HW51', type: 'pstream', name: 'Balkon' },
-    { sn: 'R331', type: 'delta2', name: null },
-    { sn: 'X1', type: null, name: null },
+    { sn: 'HW51', type: 'pstream', name: 'Balkon', ha: true, debug: false },
+    { sn: 'R331', type: 'delta2', name: null, ha: true, debug: false },
+    { sn: 'X1', type: null, name: null, ha: true, debug: false },
   ]);
   const base = { ecoflow_email: 'a@b.de', ecoflow_password: 'pw' };
   assert.throws(() => normalize({ ...base, devices: [{ sn: 'A', type: 'gibtsnicht' }] }), /unbekannter Gerätetyp "gibtsnicht"/);

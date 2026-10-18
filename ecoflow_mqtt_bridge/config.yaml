@@ -1,6 +1,6 @@
 name: "EcoFlow MQTT Bridge"
-description: "EcoFlow-Geräte (Anmeldung per E-Mail/Passwort oder Developer-API-Keys) lokal per MQTT bereitstellen, inkl. Home Assistant Auto-Discovery"
-version: "3.0.1"
+description: "EcoFlow-Geräte (Anmeldung per E-Mail/Passwort wie in ioBroker oder Developer-API-Keys) lokal per MQTT bereitstellen, inkl. Home Assistant Auto-Discovery"
+version: "3.1.0"
 slug: "ecoflow_mqtt_bridge"
 url: "https://github.com/lars752/ecoflow-mqtt-bridge"
 arch:
@@ -9,16 +9,76 @@ arch:
 init: false
 startup: application
 boot: auto
+ingress: true
+ingress_port: 8099
+panel_icon: "mdi:solar-power"
+panel_title: "EcoFlow"
 services:
   - mqtt:want
 options:
   auth_mode: "auto"
   ecoflow_email: ""
   ecoflow_password: ""
+  ecoflow_mqtt_broker: "mqtts://mqtt-e.ecoflow.com"
+  ecoflow_mqtt_port: 8883
+  ecoflow_mqtt_user_id: ""
+  ecoflow_mqtt_username: ""
+  ecoflow_mqtt_password: ""
+  ecoflow_mqtt_client_id: ""
   access_key: ""
   secret_key: ""
   api_host: "api-e.ecoflow.com"
-  devices: []
+  devices:
+    - sn: "HW51ZOH4S_ERGAENZEN"
+      type: pstream800
+      name: "PS Akku 1 links"
+      ha_enable: true
+      debug: false
+    - sn: "HW51ZOH4S_ERGAENZEN"
+      type: pstream800
+      name: "PS Akku 2 links"
+      ha_enable: true
+      debug: false
+    - sn: "HW51ZOH4S_ERGAENZEN"
+      type: pstream800
+      name: "PS Akku 3 links"
+      ha_enable: true
+      debug: false
+    - sn: "HW51ZOH4S_ERGAENZEN"
+      type: pstream800
+      name: "PS Akku 1 rechts"
+      ha_enable: true
+      debug: false
+    - sn: "HW51ZOH4S_ERGAENZEN"
+      type: pstream800
+      name: "PS Akku 2 rechts"
+      ha_enable: true
+      debug: false
+    - sn: "HW51ZOH4S_ERGAENZEN"
+      type: pstream800
+      name: "PS Akku 3 rechts"
+      ha_enable: true
+      debug: false
+    - sn: "HW51ZEH4S_ERGAENZEN"
+      type: pstream800
+      name: "PS PV 01 Garten"
+      ha_enable: true
+      debug: false
+    - sn: "HW51ZEH4S_ERGAENZEN"
+      type: pstream800
+      name: "PS PV 04 Garten"
+      ha_enable: true
+      debug: false
+    - sn: "HW51ZOH4S_ERGAENZEN"
+      type: pstream800
+      name: "PS PV 07 Garten"
+      ha_enable: true
+      debug: false
+    - sn: "HW51ZOH4S_ERGAENZEN"
+      type: pstream800
+      name: "PS PV 08 Garten"
+      ha_enable: true
+      debug: false
   poll_interval: 300
   mqtt_host: ""
   mqtt_port: 1883
@@ -33,6 +93,12 @@ schema:
   auth_mode: list(auto|api_key|email)
   ecoflow_email: email?
   ecoflow_password: password?
+  ecoflow_mqtt_broker: str?
+  ecoflow_mqtt_port: port?
+  ecoflow_mqtt_user_id: str?
+  ecoflow_mqtt_username: str?
+  ecoflow_mqtt_password: password?
+  ecoflow_mqtt_client_id: str?
   access_key: password?
   secret_key: password?
   api_host: list(api-e.ecoflow.com|api-a.ecoflow.com)
@@ -40,6 +106,8 @@ schema:
     - sn: str
       type: list(alternator|delta|delta2|delta2max|delta3|delta3classic|delta3maxplus|delta3plus|deltamax|deltamini|deltapro|deltapro3|deltaproultra|generator|glacier|glacier55|gnerator4k|panel|panel2|plug|powerkit|powerkitbp2000|powerkitbp5000|powerocean|poweroceanfit|poweroceanplus|pstream|pstream600|pstream800|rapidpro320|river2max|river2pro|river3|river3plus|rivermax|riverpro|shelly3em|smartmeter|stream_ac|stream_ac_pro|stream_inverter|stream_ultra|stream_ultra_x|wave2|wave3)?
       name: str?
+      ha_enable: bool?
+      debug: bool?
   poll_interval: int(30,3600)
   mqtt_host: str?
   mqtt_port: port?

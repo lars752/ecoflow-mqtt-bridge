@@ -17,6 +17,24 @@ MQTT-Broker und legt die Sensoren per **MQTT Discovery** in Home Assistant an. D
 Mit `auth_mode: auto` (Standard) wird der API-Key-Modus genutzt, wenn Access- **und** Secret Key
 eingetragen sind, sonst der E-Mail-Modus. Mit `api_key` bzw. `email` lässt sich das erzwingen.
 
+## Anmeldung per E-Mail: „Anmeldedaten erstellen“
+
+Die Anmeldung läuft wie im ioBroker-Adapter `ioBroker.ecoflow-mqtt`:
+
+1. In der Add-on-Konfiguration `ecoflow_email` und `ecoflow_password` eintragen (oder später in der Weboberfläche).
+2. Add-on starten. Die Verbindungseinstellungen sind schon voreingestellt (`ecoflow_mqtt_broker` = `mqtts://mqtt-e.ecoflow.com`,
+   `ecoflow_mqtt_port` = `8883`).
+3. In der Seitenleiste **EcoFlow** öffnen. Dort stehen E-Mail und Passwort sowie der Button **Anmeldedaten erstellen**.
+   Ein Klick meldet sich bei EcoFlow an und erzeugt die MQTT-Authentifizierung (Benutzer-ID, Benutzername, Passwort, Client-ID).
+   Die Werte werden angezeigt (das Passwort nur verdeckt), in den Add-on-Optionen (`ecoflow_mqtt_*`) gespeichert und die
+   Verbindung wird sofort neu aufgebaut. Passwort und E-Mail lassen sich dort auch ändern.
+
+Ohne Klick erzeugt das Add-on die Zugangsdaten beim ersten Start automatisch und speichert sie. Gespeicherte Zugangsdaten werden
+bei späteren Starts ohne neuen Login verwendet; lehnt EcoFlow sie ab, werden automatisch neue erzeugt. Ist `ecoflow_mqtt_broker`
+leer, wird die vom Server gelieferte Broker-Adresse verwendet (z. B. für US-Konten).
+
+Die Weboberfläche ist nur über Home Assistant (Ingress) erreichbar und zeigt zusätzlich die Geräteliste mit Online-Status.
+
 ## Geräte eintragen
 
 In der Add-on-Konfiguration ist `devices` eine **dynamische Liste**: pro Gerät ein Eintrag mit Seriennummer,
@@ -27,9 +45,15 @@ devices:
   - sn: "HW51ZXXXXXXXXXX"
     type: pstream800        # Gerätetyp, siehe Liste
     name: "Balkon links"    # optional, Name in Home Assistant
+    ha_enable: true         # optional (Vorgabe true): Home-Assistant-Entities anlegen
+    debug: false            # optional (Vorgabe false): empfangene Werte ins Log schreiben
   - sn: "R331XXXXXXXXXXX"
     type: delta2
 ```
+
+Die Standard-Liste enthält die 10 PowerStream-800W-Geräte der ioBroker-Instanz (PS Akku 1–3 links/rechts, PS PV 01/04/07/08
+Garten) mit Platzhalter-Seriennummern `HW51…_ERGAENZEN`. Die Seriennummern bitte vervollständigen; Einträge mit Platzhalter werden
+beim Start übersprungen.
 
 Der **Gerätetyp** entscheidet im E-Mail-Modus, wie die Nachrichten gelesen werden:
 

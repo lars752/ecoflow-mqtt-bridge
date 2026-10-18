@@ -30,6 +30,7 @@ class CloudMqtt extends EventEmitter {
     this.account = null;
     this.stopped = false;
     this.refreshing = false;
+    this.connecting = false;
   }
 
   async start(sns) {
@@ -39,14 +40,19 @@ class CloudMqtt extends EventEmitter {
 
   async connect() {
     let creds;
-    for (let attempt = 0; !this.stopped; attempt++) {
-      try {
-        creds = await this.api.getMqttCredentials();
-        break;
-      } catch (err) {
-        this.log.error(`EcoFlow-MQTT-Zugangsdaten nicht abrufbar: ${err.message} – neuer Versuch in ${this.retryMs / 1000}s`);
-        await sleep(this.retryMs);
+    this.connecting = true;
+    try {
+      for (let attempt = 0; !this.stopped; attempt++) {
+        try {
+          creds = await this.api.getMqttCredentials();
+          break;
+        } catch (err) {
+          this.log.error(`EcoFlow-MQTT-Zugangsdaten nicht abrufbar: ${err.message} – neuer Versuch in ${this.retryMs / 1000}s`);
+          await sleep(this.retryMs);
+        }
       }
+    } finally {
+      this.connecting = false;
     }
     if (this.stopped) return;
 
@@ -94,12 +100,24 @@ class CloudMqtt extends EventEmitter {
     if (this.refreshing || this.stopped) return;
     this.refreshing = true;
     this.log.warn('Zugangsdaten wurden abgelehnt – hole neue Zugangsdaten von der EcoFlow-API.');
+    this.api.invalidate?.();
     const old = this.client;
     this.client = null;
     if (old) await new Promise((r) => old.end(true, {}, r));
     await sleep(this.retryMs);
     this.refreshing = false;
     if (!this.stopped) await this.connect();
+  }
+
+  /** Verbindung sofort mit den aktuellen Zugangsdaten neu aufbauen (z. B. nach "Anmeldedaten erstellen"). */
+  async reconnectNow() {
+    // Läuft gerade die Anmeldeschleife, nimmt sie beim nächsten Versuch die neuen Zugangsdaten
+    if (this.stopped || this.connecting) return;
+    const old = this.client;
+    this.client = null;
+    if (old) await new Promise((r) => old.end(true, {}, r));
+    this.refreshing = false;
+    await this.connect();
   }
 
   onMessage(topic, payload) {
