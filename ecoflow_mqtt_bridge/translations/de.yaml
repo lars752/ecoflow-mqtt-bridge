@@ -1,25 +1,62 @@
 configuration:
-  mqtt_broker:
-    name: MQTT Broker Adresse
-    description: Hostname (z. B. core-mosquitto) oder lokale IP-Adresse (z. B. 192.168.40.101) des MQTT Brokers.
-  mqtt_port:
-    name: MQTT Port
-    description: Standardport für unverschlüsseltes MQTT ist 1883.
-  mqtt_user:
-    name: MQTT Benutzername
-    description: Benutzername für den lokalen Mosquitto Broker.
-  mqtt_password:
-    name: MQTT Passwort
-    description: Passwort für den lokalen Mosquitto Broker (am besten ohne Sonderzeichen wie #).
+  auth_mode:
+    name: Anmeldeart
+    description: auto = Developer-API-Keys, falls eingetragen, sonst E-Mail/Passwort. Oder fest api_key bzw. email wählen.
   ecoflow_email:
     name: EcoFlow E-Mail-Adresse
-    description: E-Mail-Adresse deines EcoFlow-Benutzerkontos (App-Login).
+    description: Konto der EcoFlow-App. Alternative zu den Keys, kein Developer-Portal nötig. Seriennummern in "devices" erforderlich.
   ecoflow_password:
     name: EcoFlow Passwort
-    description: Passwort deines EcoFlow-Benutzerkontos.
-  device_sn:
-    name: Geräte-Seriennummer
-    description: Seriennummer deiner EcoFlow (z. B. HW21Z00000001). Mehrere Seriennummern können kommagetrennt angegeben werden.
+    description: Passwort des EcoFlow-App-Kontos (nur für den E-Mail-Modus).
+  access_key:
+    name: Access Key
+    description: Access Key aus dem EcoFlow Developer Portal (developer.ecoflow.com). Alternativ E-Mail/Passwort verwenden.
+  secret_key:
+    name: Secret Key
+    description: Secret Key aus dem EcoFlow Developer Portal.
+  api_host:
+    name: API-Region
+    description: api-e.ecoflow.com (Europa/Global) oder api-a.ecoflow.com (USA).
+  devices:
+    name: Geräte
+    description: 'Dynamische Liste: mit „Hinzufügen“ pro Gerät einen Eintrag anlegen (Seriennummer, Gerätetyp aus der Auswahl, optional Name). API-Key-Modus: leer = alle Geräte des Kontos. E-Mail-Modus: Pflicht.'
+    fields:
+      sn:
+        name: Seriennummer
+        description: Seriennummer des Geräts (steht in der EcoFlow-App unter Geräteinfo und auf dem Typenschild).
+      type:
+        name: Gerätetyp
+        description: 'Typ aus der Auswahl. Bei Protobuf-Geräten (z. B. PowerStream, Delta 3, River 3, Stream) im E-Mail-Modus Pflicht. Zuordnung der IDs zu Produktnamen: siehe Dokumentation.'
+      name:
+        name: Anzeigename
+        description: 'Optional: Name des Geräts in Home Assistant.'
+  poll_interval:
+    name: Abrufintervall (Sekunden)
+    description: 'Nur API-Key-Modus: Abgleich über die REST-API als Basiswert und Online-Status. Live-Werte kommen zusätzlich per MQTT.'
+  mqtt_host:
+    name: MQTT-Broker Host
+    description: Leer lassen, um den Mosquitto-Broker von Home Assistant automatisch zu verwenden.
+  mqtt_port:
+    name: MQTT-Port
+    description: Standard 1883. Nur relevant, wenn ein Host eingetragen ist.
+  mqtt_user:
+    name: MQTT-Benutzername
+    description: Nur bei eigenem Broker (Host eingetragen).
+  mqtt_password:
+    name: MQTT-Passwort
+    description: Nur bei eigenem Broker (Host eingetragen).
   ha_discovery:
     name: Home Assistant Auto-Discovery
-    description: Wenn aktiviert, werden alle Sensoren automatisch in Home Assistant unter MQTT angelegt.
+    description: Legt die Sensoren per MQTT Discovery automatisch an.
+  discovery_prefix:
+    name: Discovery-Präfix
+    description: Standard "homeassistant".
+  enable_all_entities:
+    name: Alle Entities aktivieren
+    description: Aus = nur Ladestand und Leistungen sind aktiv, alle übrigen Sensoren sind angelegt, aber deaktiviert.
+  overrides:
+    name: Entity-Anpassungen
+    description: Skalierung, Einheit oder Geräteklasse einzelner Datenpunkte (match = regulärer Ausdruck auf den Schlüssel, z. B. "bms.vol$"). Siehe Dokumentation.
+  log_level:
+    name: Log-Level
+    description: Bei Problemen auf debug stellen.

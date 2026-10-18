@@ -1,0 +1,62 @@
+configuration:
+  auth_mode:
+    name: Login method
+    description: auto = developer API keys if set, otherwise email/password. Or force api_key / email.
+  ecoflow_email:
+    name: EcoFlow email address
+    description: EcoFlow app account. Alternative to the keys, no developer portal needed. Serial numbers in "devices" are required.
+  ecoflow_password:
+    name: EcoFlow password
+    description: Password of the EcoFlow app account (email mode only).
+  access_key:
+    name: Access key
+    description: Access key from the EcoFlow Developer Portal (developer.ecoflow.com). Alternatively use email/password.
+  secret_key:
+    name: Secret key
+    description: Secret key from the EcoFlow Developer Portal.
+  api_host:
+    name: API region
+    description: api-e.ecoflow.com (Europe/global) or api-a.ecoflow.com (US).
+  devices:
+    name: Devices
+    description: 'Dynamic list: use "Add" to create one entry per device (serial number, device type from the dropdown, optional name). API key mode: empty = all devices of the account. Email mode: required.'
+    fields:
+      sn:
+        name: Serial number
+        description: Serial number of the device (in the EcoFlow app under device info and on the type plate).
+      type:
+        name: Device type
+        description: Type from the dropdown. Required for protobuf devices (e.g. PowerStream, Delta 3, River 3, Stream) in email mode. See documentation for the mapping of IDs to product names.
+      name:
+        name: Display name
+        description: 'Optional: name of the device in Home Assistant.'
+  poll_interval:
+    name: Poll interval (seconds)
+    description: 'API key mode only: REST sync for baseline values and online state. Live values additionally arrive via MQTT.'
+  mqtt_host:
+    name: MQTT broker host
+    description: Leave empty to use Home Assistant's Mosquitto broker automatically.
+  mqtt_port:
+    name: MQTT port
+    description: Default 1883. Only used when a host is set.
+  mqtt_user:
+    name: MQTT username
+    description: Only for a custom broker (host set).
+  mqtt_password:
+    name: MQTT password
+    description: Only for a custom broker (host set).
+  ha_discovery:
+    name: Home Assistant auto-discovery
+    description: Creates the sensors automatically via MQTT discovery.
+  discovery_prefix:
+    name: Discovery prefix
+    description: Default "homeassistant".
+  enable_all_entities:
+    name: Enable all entities
+    description: Off = only state of charge and power values are enabled; all other sensors are created but disabled.
+  overrides:
+    name: Entity overrides
+    description: Scale, unit or device class of individual data points (match = regular expression on the key, e.g. "bms.vol$"). See documentation.
+  log_level:
+    name: Log level
+    description: Set to debug when troubleshooting.
