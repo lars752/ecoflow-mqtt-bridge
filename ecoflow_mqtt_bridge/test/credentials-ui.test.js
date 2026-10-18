@@ -24,10 +24,7 @@ test('normalize: Platzhalter-Seriennummern werden übersprungen, ha_enable/debug
   assert.equal(c.devices.length, 1);
   assert.deepEqual(c.devices[0], { sn: 'HW51ZOH4SABCDEF1', type: 'pstream', name: 'PS PV 07', ha: false, debug: true });
   assert.deepEqual(c.skippedDevices, [{ sn: 'HW51ZOH4S_ERGAENZEN', name: 'PS Akku 1 links' }]);
-  assert.throws(
-    () => normalize({ ...base, devices: [{ sn: 'HW51_ERGAENZEN', type: 'pstream800' }] }),
-    /Bei allen 1 Geräten fehlt noch die Seriennummer/,
-  );
+  assert.deepEqual(normalize({ ...base, devices: [{ sn: 'HW51_ERGAENZEN', type: 'pstream800' }] }).devices, []);
 });
 
 test('normalize: Broker, Port und gespeicherte MQTT-Zugangsdaten', () => {
@@ -49,14 +46,12 @@ test('normalize: Broker, Port und gespeicherte MQTT-Zugangsdaten', () => {
   assert.throws(() => normalize({ ...base, devices: ['SN1'], ecoflow_mqtt_broker: 'mqtts://x', ecoflow_mqtt_port: 99999 }), /ecoflow_mqtt_port/);
 });
 
-test('config.yaml: zehn PowerStream-800W-Geräte mit Platzhalter-Seriennummern als Standard', () => {
+test('config.yaml: Standard ohne Geräte, Broker vorbelegt, Ingress aktiv', () => {
   const text = fs.readFileSync(path.join(__dirname, '..', 'config.yaml'), 'utf8');
   const opts = text.slice(text.indexOf('options:'), text.indexOf('schema:'));
-  assert.equal((opts.match(/type: pstream800/g) || []).length, 10);
-  assert.equal((opts.match(/_ERGAENZEN/g) || []).length, 10);
+  assert.match(opts, /devices: \[\]/);
   assert.match(opts, /ecoflow_mqtt_broker: "mqtts:\/\/mqtt-e\.ecoflow\.com"/);
   assert.match(opts, /ecoflow_mqtt_port: 8883/);
-  for (const n of ['PS Akku 1 links', 'PS Akku 3 rechts', 'PS PV 01 Garten', 'PS PV 08 Garten']) assert.ok(opts.includes(`name: "${n}"`), n);
   assert.match(text, /ingress: true/);
 });
 

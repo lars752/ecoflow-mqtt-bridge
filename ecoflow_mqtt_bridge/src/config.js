@@ -73,13 +73,6 @@ function normalize(raw, version = '0.0.0') {
   } else {
     if (!email) errors.push('ecoflow_email fehlt');
     if (!emailPassword) errors.push('ecoflow_password fehlt');
-    if (!devices.length) {
-      errors.push(
-        skippedDevices.length
-          ? `Bei allen ${skippedDevices.length} Geräten fehlt noch die Seriennummer (Platzhalter "…ERGAENZEN"). Bitte unter "Geräte" die vollständigen Seriennummern eintragen`
-          : 'Im E-Mail-Modus gibt es keine automatische Geräteliste: Seriennummern bitte in "devices" eintragen',
-      );
-    }
   }
 
   // Verbindungseinstellungen der EcoFlow-Cloud (E-Mail-Modus), Vorgabe wie im ioBroker-Adapter

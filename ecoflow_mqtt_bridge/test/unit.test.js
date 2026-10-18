@@ -112,7 +112,7 @@ test('normalize: gültige Konfiguration mit Defaults', () => {
 test('normalize: Fehler werden gesammelt gemeldet', () => {
   assert.throws(() => normalize({}), /Keine Zugangsdaten/);
   assert.throws(() => normalize({ auth_mode: 'api_key' }), /access_key fehlt[\s\S]*secret_key fehlt/);
-  assert.throws(() => normalize({ auth_mode: 'email', ecoflow_email: 'a@b.de' }), /ecoflow_password fehlt[\s\S]*devices/);
+  assert.throws(() => normalize({ auth_mode: 'email', ecoflow_email: 'a@b.de' }), /ecoflow_password fehlt/);
   assert.throws(() => normalize({ access_key: 'a', secret_key: 'b', overrides: [{ match: '(' }] }), /regulärer Ausdruck/);
   assert.throws(() => normalize({ access_key: 'a', secret_key: 'b', overrides: [{ match: 'x', scale: 0 }] }), /scale/);
   assert.throws(() => normalize({ access_key: 'a', secret_key: 'b', mqtt_port: 70000 }), /mqtt_port/);
@@ -123,7 +123,7 @@ test('Logger schwärzt Geheimnisse', () => {
   assert.equal(redact('key=supergeheim123!'), 'key=***!');
 });
 
-test('normalize: Anmeldeart automatisch, Keys haben Vorrang, E-Mail braucht Seriennummern', () => {
+test('normalize: Anmeldeart automatisch, Keys haben Vorrang, E-Mail startet auch ohne Geräte', () => {
   assert.equal(normalize({ access_key: 'a', secret_key: 'b' }).authMode, 'api_key');
   const em = normalize({ ecoflow_email: 'a@b.de', ecoflow_password: 'pw', devices: ['SN1'] });
   assert.equal(em.authMode, 'email');
@@ -132,7 +132,7 @@ test('normalize: Anmeldeart automatisch, Keys haben Vorrang, E-Mail braucht Seri
   const both = { access_key: 'a', secret_key: 'b', ecoflow_email: 'a@b.de', ecoflow_password: 'pw', devices: ['SN1'] };
   assert.equal(normalize(both).authMode, 'api_key');
   assert.equal(normalize({ ...both, auth_mode: 'email' }).authMode, 'email');
-  assert.throws(() => normalize({ ecoflow_email: 'a@b.de', ecoflow_password: 'pw' }), /Seriennummern/);
+  assert.deepEqual(normalize({ ecoflow_email: 'a@b.de', ecoflow_password: 'pw' }).devices, []); // startet ohne Geräte, damit die Weboberfläche erreichbar bleibt
 });
 
 test('parseQuota/parseStatus: App-Format data.quotaMap und data.online', () => {

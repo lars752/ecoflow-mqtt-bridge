@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.1.1
+
+* Die vorbelegte Liste mit 10 PowerStream-800W-Geräten wurde entfernt; `devices` ist standardmäßig leer.
+* Im E-Mail-Modus startet das Add-on auch ohne Geräte (Warnung im Log), damit „Anmeldedaten erstellen“ erreichbar bleibt.
+
 ## 3.1.0
 
 * **Anmeldung wie im ioBroker-Adapter:** Neue Weboberfläche in der Seitenleiste („EcoFlow“, Home-Assistant-Ingress) mit
@@ -11,9 +16,6 @@
   `ecoflow_mqtt_client_id`. Gespeicherte Zugangsdaten werden beim Start ohne neuen Login verwendet; werden sie abgelehnt,
   erzeugt das Add-on automatisch neue.
 * Geräteliste mit **HA enable** (`ha_enable`) und **Debug enable** (`debug`) pro Gerät, wie in der ioBroker-Gerätekonfiguration.
-* Standard-Geräteliste: 10 PowerStream-800W-Geräte aus der ioBroker-Instanz `ecoflow-mqtt.8` (PS Akku 1–3 links/rechts,
-  PS PV 01/04/07/08 Garten). Die Seriennummern sind Platzhalter (`…_ERGAENZEN`) und müssen vervollständigt werden;
-  Geräte mit Platzhalter werden beim Start übersprungen (Warnung im Log).
 * Tests für Konfiguration, gespeicherte Zugangsdaten, Weboberfläche und Speichern über den Supervisor.
 
 ## 3.0.1
