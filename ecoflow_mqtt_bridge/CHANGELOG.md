@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.1.0
+
+* **Anmeldung wie im ioBroker-Adapter:** Neue Weboberfläche in der Seitenleiste („EcoFlow“, Home-Assistant-Ingress) mit
+  E-Mail, Passwort und dem Button **Anmeldedaten erstellen**. Der Button meldet sich bei EcoFlow an, erzeugt die
+  MQTT-Zugangsdaten (Benutzer-ID, Benutzername, Passwort, Client-ID), zeigt sie an, speichert sie in den Add-on-Optionen
+  und baut die Verbindung sofort neu auf.
+* Neue Optionen `ecoflow_mqtt_broker` (Vorgabe `mqtts://mqtt-e.ecoflow.com`) und `ecoflow_mqtt_port` (Vorgabe `8883`)
+  sowie die automatisch befüllten `ecoflow_mqtt_user_id`, `ecoflow_mqtt_username`, `ecoflow_mqtt_password`,
+  `ecoflow_mqtt_client_id`. Gespeicherte Zugangsdaten werden beim Start ohne neuen Login verwendet; werden sie abgelehnt,
+  erzeugt das Add-on automatisch neue.
+* Geräteliste mit **HA enable** (`ha_enable`) und **Debug enable** (`debug`) pro Gerät, wie in der ioBroker-Gerätekonfiguration.
+* Standard-Geräteliste: 10 PowerStream-800W-Geräte aus der ioBroker-Instanz `ecoflow-mqtt.8` (PS Akku 1–3 links/rechts,
+  PS PV 01/04/07/08 Garten). Die Seriennummern sind Platzhalter (`…_ERGAENZEN`) und müssen vervollständigt werden;
+  Geräte mit Platzhalter werden beim Start übersprungen (Warnung im Log).
+* Tests für Konfiguration, gespeicherte Zugangsdaten, Weboberfläche und Speichern über den Supervisor.
+
 ## 3.0.1
 
 * Eingabemaske: Feldbeschriftungen und Hilfetexte für die dynamische Geräteliste (Seriennummer, Gerätetyp als Auswahlliste, Anzeigename).

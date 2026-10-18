@@ -19,9 +19,18 @@ const APP_HEADERS = {
 };
 
 class EcoFlowAppApi {
-  constructor({ email, password, baseUrl = 'https://api.ecoflow.com', fetchImpl = fetch, timeoutMs = 15000 }) {
+  /**
+   * broker: { protocol, host, port } überschreibt die vom Server gelieferte Broker-Adresse (Vorgabe wie im ioBroker-Adapter).
+   * preset: gespeicherte Zugangsdaten { account, password, userId, clientId }; werden vor einem neuen Login verwendet.
+   * onCredentials: wird nach jedem neu erzeugten Zugangsdaten-Satz aufgerufen (Speichern in den Optionen).
+   */
+  constructor({ email, password, baseUrl = 'https://api.ecoflow.com', fetchImpl = fetch, timeoutMs = 15000, broker = null, preset = null, onCredentials = null }) {
     this.email = email;
     this.password = password;
+    this.broker = broker;
+    this.preset = preset;
+    this.presetInvalid = false;
+    this.onCredentials = onCredentials;
     this.baseUrl = baseUrl;
     this.fetch = fetchImpl;
     this.timeoutMs = timeoutMs;
@@ -77,21 +86,70 @@ class EcoFlowAppApi {
     return { token, userId: String(userId) };
   }
 
-  /** Meldet sich an und liefert die MQTT-Zugangsdaten der App-Sitzung. */
-  async getMqttCredentials() {
+  /** Übernimmt die konfigurierte Broker-Adresse (falls gesetzt) in einen Zugangsdaten-Satz. */
+  withBroker(c) {
+    if (!this.broker) return { ...c };
+    return { ...c, url: this.broker.host, port: this.broker.port, protocol: this.broker.protocol };
+  }
+
+  /** Gespeicherte Zugangsdaten sind nur brauchbar, wenn auch ein Broker bekannt ist. */
+  presetUsable() {
+    const p = this.preset;
+    return Boolean(p && p.account && p.password && !this.presetInvalid && (this.broker || p.url));
+  }
+
+  /** Nach abgelehnten Zugangsdaten: beim nächsten Abruf neu anmelden. */
+  invalidate() {
+    this.presetInvalid = true;
+  }
+
+  /**
+   * "Anmeldedaten erstellen": Login mit E-Mail/Passwort und Abruf der MQTT-Zugangsdaten
+   * (Benutzer-ID, Benutzername, Passwort, Client-ID). Die Daten werden gemerkt und über onCredentials gemeldet.
+   */
+  async createCredentials({ email, password } = {}) {
+    if (email) this.email = email;
+    if (password) this.password = password;
     const { token, userId } = await this.login();
     const d = await this.request(`/iot-auth/app/certification?userId=${encodeURIComponent(userId)}`, { token });
     if (!d?.certificateAccount || !d?.certificatePassword || !d?.url) {
       throw new EcoFlowApiError('Unvollständige MQTT-Zugangsdaten von der EcoFlow-App-API');
     }
-    return {
+    // Die Client-ID bleibt stabil, solange sie zum Konto passt
+    const keep = this.preset?.clientId && this.preset.clientId.endsWith(`_${userId}`) ? this.preset.clientId : null;
+    const creds = {
+      userId,
       account: d.certificateAccount,
       password: d.certificatePassword,
       url: d.url,
       port: Number(d.port) || 8883,
       protocol: d.protocol || 'mqtts',
-      clientId: `ANDROID_${crypto.randomUUID()}_${userId}`,
+      clientId: keep ?? `ANDROID_${crypto.randomUUID()}_${userId}`,
     };
+    this.preset = creds;
+    this.presetInvalid = false;
+    if (this.onCredentials) {
+      try {
+        await this.onCredentials(creds);
+      } catch {
+        /* Speichern ist optional und meldet Fehler selbst */
+      }
+    }
+    return this.withBroker(creds);
+  }
+
+  /** Liefert gespeicherte Zugangsdaten oder erzeugt neue. */
+  async getMqttCredentials() {
+    if (this.presetUsable()) {
+      const p = this.preset;
+      return this.withBroker({
+        ...p,
+        clientId: p.clientId || `ANDROID_${crypto.randomUUID()}_${p.userId ?? '0'}`,
+        protocol: p.protocol || 'mqtts',
+        port: p.port || 8883,
+      });
+    }
+    return this.createCredentials();
   }
 
   async listDevices() {

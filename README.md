@@ -10,4 +10,6 @@ Repository-URL hinzufügen, Add-on installieren, Zugangsdaten und Geräte (Serie
 Dokumentation: [`ecoflow_mqtt_bridge/DOCS.md`](ecoflow_mqtt_bridge/DOCS.md) ·
 Änderungen: [`ecoflow_mqtt_bridge/CHANGELOG.md`](ecoflow_mqtt_bridge/CHANGELOG.md)
 
+Anmeldung: In der Seitenleiste „EcoFlow“ E-Mail und Passwort eingeben und „Anmeldedaten erstellen“ klicken (wie im ioBroker-Adapter).
+
 Entwicklung: `cd ecoflow_mqtt_bridge && npm ci && npm test`

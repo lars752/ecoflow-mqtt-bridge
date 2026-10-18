@@ -10,7 +10,13 @@ function createApp(config, logger, overrides = {}) {
   const api =
     overrides.api ??
     (config.authMode === 'email'
-      ? new EcoFlowAppApi({ email: config.email, password: config.emailPassword })
+      ? new EcoFlowAppApi({
+          email: config.email,
+          password: config.emailPassword,
+          broker: config.ecoflowBroker,
+          preset: config.presetMqtt,
+          onCredentials: overrides.onCredentials,
+        })
       : new EcoFlowApi({ accessKey: config.accessKey, secretKey: config.secretKey, host: config.apiHost }));
   const types = new Map(config.devices.filter((d) => d.type).map((d) => [d.sn, d.type]));
   const cloud = overrides.cloud ?? new CloudMqtt({ api, logger, types });

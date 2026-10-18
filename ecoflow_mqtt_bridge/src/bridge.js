@@ -95,6 +95,8 @@ class Bridge {
       this.devices.set(d.sn, {
         sn: d.sn,
         type: conf?.type ?? null,
+        ha: conf?.ha !== false,
+        debug: conf?.debug === true,
         name: conf?.name ?? d.name,
         online: d.online,
         lastSeen: 0,
@@ -112,6 +114,7 @@ class Bridge {
   update(sn, flat, source) {
     const dev = this.devices.get(sn);
     if (!dev) return;
+    if (dev.debug && source === 'mqtt') this.log.info(`[Debug ${dev.name}] ${JSON.stringify(flat).slice(0, 1500)}`);
     for (const [key, value] of Object.entries(flat)) {
       if (!dev.specs.has(key)) this.track(dev, key, value);
       dev.state[key] = value;
@@ -127,7 +130,7 @@ class Bridge {
     const meta = dev.type ? lookupMeta(dev.type, key) : undefined;
     const spec = describeEntity(key, value, this.cfg.overrides, meta);
     dev.specs.set(key, spec);
-    if (!this.cfg.haDiscovery || spec.ignore) return;
+    if (!this.cfg.haDiscovery || !dev.ha || spec.ignore) return;
 
     let entitySlug = slug(key);
     if (dev.slugs.has(entitySlug) && dev.slugs.get(entitySlug) !== key) entitySlug += `_${shortHash(key)}`;

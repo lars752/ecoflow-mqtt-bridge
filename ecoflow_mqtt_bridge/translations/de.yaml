@@ -8,6 +8,24 @@ configuration:
   ecoflow_password:
     name: EcoFlow Passwort
     description: Passwort des EcoFlow-App-Kontos (nur für den E-Mail-Modus).
+  ecoflow_mqtt_broker:
+    name: EcoFlow MQTT-Broker
+    description: Voreingestellt wie im ioBroker-Adapter (mqtts://mqtt-e.ecoflow.com). Leer lassen, um die vom Server gelieferte Adresse zu verwenden.
+  ecoflow_mqtt_port:
+    name: EcoFlow MQTT-Port
+    description: Standard 8883 (TLS).
+  ecoflow_mqtt_user_id:
+    name: mqtt-Benutzer-ID (automatisch)
+    description: Wird beim Erstellen der Anmeldedaten automatisch eingetragen (Seitenleiste EcoFlow, Button Anmeldedaten erstellen).
+  ecoflow_mqtt_username:
+    name: mqtt-Benutzername (automatisch)
+    description: Wird automatisch erzeugt und hier gespeichert.
+  ecoflow_mqtt_password:
+    name: mqtt pwd (automatisch)
+    description: Wird automatisch erzeugt und hier gespeichert.
+  ecoflow_mqtt_client_id:
+    name: mqtt-Client-ID (automatisch)
+    description: Wird automatisch erzeugt und hier gespeichert.
   access_key:
     name: Access Key
     description: Access Key aus dem EcoFlow Developer Portal (developer.ecoflow.com). Alternativ E-Mail/Passwort verwenden.
@@ -30,6 +48,12 @@ configuration:
       name:
         name: Anzeigename
         description: 'Optional: Name des Geräts in Home Assistant.'
+      ha_enable:
+        name: HA enable
+        description: Aus = für dieses Gerät keine Home-Assistant-Entities anlegen (Werte werden weiter per MQTT veröffentlicht).
+      debug:
+        name: Debug enable
+        description: Schreibt die empfangenen Werte dieses Geräts ins Add-on-Log.
   poll_interval:
     name: Abrufintervall (Sekunden)
     description: 'Nur API-Key-Modus: Abgleich über die REST-API als Basiswert und Online-Status. Live-Werte kommen zusätzlich per MQTT.'
