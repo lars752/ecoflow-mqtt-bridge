@@ -1,31 +1,58 @@
 name: "EcoFlow MQTT Bridge"
-description: "Vollständige Abbildung von EcoFlow-Geräten (Delta Pro, PowerStream etc.) via MQTT inkl. Home Assistant Auto-Discovery"
-version: "1.0.2"
+description: "EcoFlow-Geräte (Anmeldung per E-Mail/Passwort oder Developer-API-Keys) lokal per MQTT bereitstellen, inkl. Home Assistant Auto-Discovery"
+version: "3.0.1"
 slug: "ecoflow_mqtt_bridge"
-init: false
+url: "https://github.com/lars752/ecoflow-mqtt-bridge"
 arch:
   - aarch64
   - amd64
-  - armhf
-  - armv7
-  - i386
+init: false
 startup: application
 boot: auto
+services:
+  - mqtt:want
 options:
-  mqtt_broker: "192.168.40.101"
-  mqtt_port: 1883
-  mqtt_user: "mqtt-user"
-  mqtt_password: ""
+  auth_mode: "auto"
   ecoflow_email: ""
   ecoflow_password: ""
-  device_sn: "HW21Z00000001"
+  access_key: ""
+  secret_key: ""
+  api_host: "api-e.ecoflow.com"
+  devices: []
+  poll_interval: 300
+  mqtt_host: ""
+  mqtt_port: 1883
+  mqtt_user: ""
+  mqtt_password: ""
   ha_discovery: true
+  discovery_prefix: "homeassistant"
+  enable_all_entities: false
+  overrides: []
+  log_level: "info"
 schema:
-  mqtt_broker: str
-  mqtt_port: port
-  mqtt_user: str
-  mqtt_password: password
-  ecoflow_email: email
-  ecoflow_password: password
-  device_sn: str
+  auth_mode: list(auto|api_key|email)
+  ecoflow_email: email?
+  ecoflow_password: password?
+  access_key: password?
+  secret_key: password?
+  api_host: list(api-e.ecoflow.com|api-a.ecoflow.com)
+  devices:
+    - sn: str
+      type: list(alternator|delta|delta2|delta2max|delta3|delta3classic|delta3maxplus|delta3plus|deltamax|deltamini|deltapro|deltapro3|deltaproultra|generator|glacier|glacier55|gnerator4k|panel|panel2|plug|powerkit|powerkitbp2000|powerkitbp5000|powerocean|poweroceanfit|poweroceanplus|pstream|pstream600|pstream800|rapidpro320|river2max|river2pro|river3|river3plus|rivermax|riverpro|shelly3em|smartmeter|stream_ac|stream_ac_pro|stream_inverter|stream_ultra|stream_ultra_x|wave2|wave3)?
+      name: str?
+  poll_interval: int(30,3600)
+  mqtt_host: str?
+  mqtt_port: port?
+  mqtt_user: str?
+  mqtt_password: password?
   ha_discovery: bool
+  discovery_prefix: str
+  enable_all_entities: bool
+  overrides:
+    - match: str
+      scale: float?
+      unit: str?
+      device_class: str?
+      state_class: str?
+      ignore: bool?
+  log_level: list(debug|info|warn|error)

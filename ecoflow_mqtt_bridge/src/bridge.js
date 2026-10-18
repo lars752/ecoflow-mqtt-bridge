@@ -1,68 +1,236 @@
+'use strict';
 /**
- * MQTT Bridge: Verbindet EcoFlow Daten mit dem lokalen MQTT Broker und führt Home Assistant Discovery durch
+ * Kern der Bridge: hält den Zustand pro Gerät, veröffentlicht ihn als JSON auf dem
+ * lokalen Broker und legt per MQTT Discovery die Home-Assistant-Entities an.
+ *
+ * Topics (baseTopic = ecoflow_bridge):
+ *   <base>/status              online/offline der Bridge (retained, LWT)
+ *   <base>/<sn>/availability   online/offline des Geräts (retained)
+ *   <base>/<sn>/state          kompletter Gerätezustand als flaches JSON (retained)
  */
-const mqtt = require('mqtt');
-const { logger } = require('./log');
-const { flattenObject } = require('./flatten');
-const { getDiscoveryConfig } = require('./entities');
+const { flatten } = require('./flatten');
+const { describeEntity, scaleValue, buildDiscovery, slug, shortHash } = require('./entities');
+const { lookupMeta } = require('./catalog');
 
-class MQTTBridge {
-    constructor(config, ecoflowClient) {
-        this.config = config;
-        this.client = ecoflowClient;
-        this.mqttClient = null;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const PUBLISH_DEBOUNCE_MS = 1000;
+// Ohne REST-API (E-Mail-Modus) gilt ein Gerät nach so langer Stille als offline
+const STALE_MS = 180000;
+
+class Bridge {
+  constructor({ config, api, cloud, local, logger, staleMs = STALE_MS }) {
+    this.staleMs = staleMs;
+    this.watchdogTimer = null;
+    this.cfg = config;
+    this.api = api;
+    this.cloud = cloud;
+    this.local = local;
+    this.log = logger;
+    this.devices = new Map(); // sn -> Gerätezustand
+    this.pollTimer = null;
+    this.polling = false;
+    this.stopped = false;
+  }
+
+  async start() {
+    this.cloud.on('quota', (sn, flat) => this.update(sn, flat, 'mqtt'));
+    this.cloud.on('status', (sn, online) => this.setOnline(sn, online));
+    this.cloud.on('unsupported', (sn, reason, detail) => {
+      const msg = {
+        'no-type': `Gerät ${sn} sendet Protobuf-Nachrichten, aber in "devices" ist kein Gerätetyp (type) angegeben. Bitte den Typ eintragen (Liste in der Dokumentation).`,
+        'wrong-type': `Gerät ${sn} sendet Protobuf, der konfigurierte Typ "${detail}" ist aber ein JSON-Gerät. Gerätetyp prüfen.`,
+        'decode-error': `Gerät ${sn}: Protobuf-Nachricht nicht dekodierbar (${detail}). Passt der Gerätetyp? Details mit log_level debug.`,
+      }[reason];
+      this.log.warn(msg);
+    });
+    this.local.on('connect', () => this.republishAll());
+    this.local.on('ha-birth', () => {
+      this.log.info('Home Assistant gestartet – sende Discovery erneut.');
+      this.republishAll();
+    });
+
+    await this.local.connect();
+    await this.discoverDevices();
+    this.republishAll(); // Anfangszustand (Verfügbarkeit) sofort bekannt machen
+    await this.cloud.start([...this.devices.keys()]);
+
+    if (this.api.supportsRest) {
+      await this.poll();
+      this.pollTimer = setInterval(() => this.poll(), this.cfg.pollInterval * 1000);
+    } else {
+      this.watchdogTimer = setInterval(() => this.checkStale(), Math.min(30000, Math.max(200, this.staleMs / 2)));
     }
+  }
 
-    start() {
-        const brokerUrl = `mqtt://${this.config.mqttUser ? this.config.mqttUser + ':' + this.config.mqttPass + '@' : ''}${this.config.mqttHost}:${this.config.mqttPort}`;
-        logger.info(`Verbinde mit MQTT Broker: ${this.config.mqttHost}:${this.config.mqttPort}`);
-
-        this.mqttClient = mqtt.connect(brokerUrl);
-
-        this.mqttClient.on('connect', async () => {
-            logger.info('Erfolgreich mit MQTT Broker verbunden.');
-            
-            // Lade Geräte und richte MQTT Discovery ein
-            const devices = await this.client.fetchDevices();
-            for (const device of devices) {
-                logger.info(`Registriere Gerät für HA Discovery: ${device.name} (${device.id})`);
-                
-                // Beispiel-Statusdaten simulieren und publizieren
-                const sampleData = {
-                    soc: 85,
-                    watts_in: 500,
-                    watts_out: 150,
-                    temp: 24.5,
-                    voltage: 51.2
-                };
-
-                const flat = flattenObject(sampleData);
-                for (const [key, val] of Object.entries(flat)) {
-                    if (this.config.haEnable) {
-                        const discovery = getDiscoveryConfig(device.id, device.name, key, val);
-                        this.mqttClient.publish(discovery.topic, JSON.stringify(discovery.payload), { retain: true });
-                    }
-                }
-
-                // Periodischer State Update
-                setInterval(() => {
-                    const currentSample = {
-                        soc: Math.floor(Math.random() * 20) + 70,
-                        watts_in: Math.floor(Math.random() * 200) + 400,
-                        watts_out: Math.floor(Math.random() * 100) + 100,
-                        temp: 25.0,
-                        voltage: 51.2
-                    };
-                    this.mqttClient.publish(`ecoflow/${device.id}/state`, JSON.stringify(currentSample));
-                    logger.debug(`Status aktualisiert für ${device.id}`);
-                }, 10000);
-            }
-        });
-
-        this.mqttClient.on('error', (err) => {
-            logger.error('MQTT Fehler:', err.message);
-        });
+  async discoverDevices() {
+    let list;
+    if (!this.api.supportsRest) {
+      // E-Mail-Modus: keine Geräteliste verfügbar, Seriennummern kommen aus der Konfiguration
+      list = this.cfg.devices.map((d) => ({ sn: d.sn, name: d.name ?? d.sn, online: false }));
     }
+    for (let attempt = 0; !list && !this.stopped; attempt++) {
+      try {
+        list = await this.api.listDevices();
+        break;
+      } catch (err) {
+        const wait = Math.min(300, 15 * 2 ** Math.min(attempt, 5));
+        this.log.error(`Geräteliste nicht abrufbar: ${err.message} – neuer Versuch in ${wait}s`);
+        await sleep(wait * 1000);
+      }
+    }
+    if (this.stopped) return;
+
+    const wanted = this.cfg.devices.map((d) => d.sn);
+    const selected = wanted.length ? list.filter((d) => wanted.includes(d.sn)) : list;
+    for (const sn of wanted) {
+      if (!list.some((d) => d.sn === sn)) {
+        this.log.warn(`Gerät ${sn} wurde in der EcoFlow-Geräteliste nicht gefunden – wird trotzdem versucht.`);
+        selected.push({ sn, name: sn, online: false });
+      }
+    }
+    if (!selected.length) this.log.warn('Keine Geräte gefunden. Prüfe Account, Region (api_host) und die Geräteauswahl.');
+
+    for (const d of selected) {
+      const conf = this.cfg.devices.find((x) => x.sn === d.sn);
+      this.devices.set(d.sn, {
+        sn: d.sn,
+        type: conf?.type ?? null,
+        name: conf?.name ?? d.name,
+        online: d.online,
+        lastSeen: 0,
+        state: Object.create(null),
+        specs: new Map(),
+        entities: new Map(), // key -> { topic, payload }
+        slugs: new Map(), // slug -> key
+        publishTimer: null,
+      });
+      this.log.info(`Gerät: ${d.name} (${d.sn}${conf?.type ? `, Typ ${conf.type}` : ''}), ${d.online ? 'online' : 'offline'}`);
+    }
+  }
+
+  /** Neue Werte übernehmen. source: 'mqtt' (live) oder 'rest' (Abruf). */
+  update(sn, flat, source) {
+    const dev = this.devices.get(sn);
+    if (!dev) return;
+    for (const [key, value] of Object.entries(flat)) {
+      if (!dev.specs.has(key)) this.track(dev, key, value);
+      dev.state[key] = value;
+    }
+    if (source === 'mqtt') {
+      dev.lastSeen = Date.now();
+      if (!dev.online) this.setOnline(sn, true);
+    }
+    this.schedulePublish(dev);
+  }
+
+  track(dev, key, value) {
+    const meta = dev.type ? lookupMeta(dev.type, key) : undefined;
+    const spec = describeEntity(key, value, this.cfg.overrides, meta);
+    dev.specs.set(key, spec);
+    if (!this.cfg.haDiscovery || spec.ignore) return;
+
+    let entitySlug = slug(key);
+    if (dev.slugs.has(entitySlug) && dev.slugs.get(entitySlug) !== key) entitySlug += `_${shortHash(key)}`;
+    dev.slugs.set(entitySlug, key);
+
+    const discovery = buildDiscovery({ sn: dev.sn, deviceName: dev.name, key, spec, entitySlug, cfg: this.cfg });
+    dev.entities.set(key, discovery);
+    this.local.publish(discovery.topic, JSON.stringify(discovery.payload), { retain: true, qos: 1 });
+  }
+
+  setOnline(sn, online) {
+    const dev = this.devices.get(sn);
+    if (!dev || dev.online === online) {
+      if (dev) this.publishAvailability(dev);
+      return;
+    }
+    dev.online = online;
+    this.log.info(`Gerät ${dev.name} (${sn}) ist jetzt ${online ? 'online' : 'offline'}.`);
+    this.publishAvailability(dev);
+  }
+
+  publishAvailability(dev) {
+    this.local.publish(`${this.cfg.baseTopic}/${dev.sn}/availability`, dev.online ? 'online' : 'offline', {
+      retain: true,
+      qos: 1,
+    });
+  }
+
+  schedulePublish(dev) {
+    if (dev.publishTimer) return;
+    dev.publishTimer = setTimeout(() => {
+      dev.publishTimer = null;
+      this.publishState(dev);
+    }, PUBLISH_DEBOUNCE_MS);
+  }
+
+  publishState(dev) {
+    const out = {};
+    for (const [key, value] of Object.entries(dev.state)) {
+      out[key] = scaleValue(value, dev.specs.get(key) ?? {});
+    }
+    this.local.publish(`${this.cfg.baseTopic}/${dev.sn}/state`, JSON.stringify(out), { retain: true, qos: 0 });
+  }
+
+  /** Nach (Re-)Connect oder HA-Neustart: Discovery, Verfügbarkeit und Zustand erneut senden. */
+  republishAll() {
+    for (const dev of this.devices.values()) {
+      for (const d of dev.entities.values()) {
+        this.local.publish(d.topic, JSON.stringify(d.payload), { retain: true, qos: 1 });
+      }
+      this.publishAvailability(dev);
+      if (Object.keys(dev.state).length) this.publishState(dev);
+    }
+  }
+
+  /** E-Mail-Modus: Gerät ohne Nachrichten für staleMs gilt als offline. */
+  checkStale() {
+    const now = Date.now();
+    for (const dev of this.devices.values()) {
+      if (dev.online && now - dev.lastSeen > this.staleMs) this.setOnline(dev.sn, false);
+    }
+  }
+
+  /** Periodischer Abgleich über die REST-API (Basiswerte + Online-Status). */
+  async poll() {
+    if (this.polling || this.stopped) return;
+    this.polling = true;
+    try {
+      try {
+        for (const d of await this.api.listDevices()) this.setOnline(d.sn, d.online);
+      } catch (err) {
+        this.log.warn(`Geräteliste konnte nicht aktualisiert werden: ${err.message}`);
+      }
+      for (const dev of this.devices.values()) {
+        if (this.stopped) break;
+        try {
+          const quota = await this.api.getQuota(dev.sn);
+          this.update(dev.sn, flatten(quota), 'rest');
+          this.log.debug(`REST-Abruf ${dev.sn}: ${Object.keys(quota).length} Datenpunkte`);
+        } catch (err) {
+          this.log.warn(`REST-Abruf für ${dev.sn} fehlgeschlagen: ${err.message}`);
+        }
+        await sleep(500);
+      }
+    } finally {
+      this.polling = false;
+    }
+  }
+
+  async stop() {
+    this.stopped = true;
+    clearInterval(this.pollTimer);
+    clearInterval(this.watchdogTimer);
+    for (const dev of this.devices.values()) {
+      if (dev.publishTimer) {
+        clearTimeout(dev.publishTimer);
+        dev.publishTimer = null;
+        this.publishState(dev);
+      }
+    }
+    await this.cloud.stop();
+    await this.local.stop();
+  }
 }
 
-module.exports = { MQTTBridge };
+module.exports = { Bridge };
