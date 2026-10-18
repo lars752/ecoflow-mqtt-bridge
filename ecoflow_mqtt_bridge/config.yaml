@@ -1,6 +1,6 @@
 name: "EcoFlow MQTT Bridge"
 description: "EcoFlow-Geräte (Anmeldung per E-Mail/Passwort wie in ioBroker oder Developer-API-Keys) lokal per MQTT bereitstellen, inkl. Home Assistant Auto-Discovery"
-version: "3.1.0"
+version: "3.1.1"
 slug: "ecoflow_mqtt_bridge"
 url: "https://github.com/lars752/ecoflow-mqtt-bridge"
 arch:
@@ -28,57 +28,7 @@ options:
   access_key: ""
   secret_key: ""
   api_host: "api-e.ecoflow.com"
-  devices:
-    - sn: "HW51ZOH4S_ERGAENZEN"
-      type: pstream800
-      name: "PS Akku 1 links"
-      ha_enable: true
-      debug: false
-    - sn: "HW51ZOH4S_ERGAENZEN"
-      type: pstream800
-      name: "PS Akku 2 links"
-      ha_enable: true
-      debug: false
-    - sn: "HW51ZOH4S_ERGAENZEN"
-      type: pstream800
-      name: "PS Akku 3 links"
-      ha_enable: true
-      debug: false
-    - sn: "HW51ZOH4S_ERGAENZEN"
-      type: pstream800
-      name: "PS Akku 1 rechts"
-      ha_enable: true
-      debug: false
-    - sn: "HW51ZOH4S_ERGAENZEN"
-      type: pstream800
-      name: "PS Akku 2 rechts"
-      ha_enable: true
-      debug: false
-    - sn: "HW51ZOH4S_ERGAENZEN"
-      type: pstream800
-      name: "PS Akku 3 rechts"
-      ha_enable: true
-      debug: false
-    - sn: "HW51ZEH4S_ERGAENZEN"
-      type: pstream800
-      name: "PS PV 01 Garten"
-      ha_enable: true
-      debug: false
-    - sn: "HW51ZEH4S_ERGAENZEN"
-      type: pstream800
-      name: "PS PV 04 Garten"
-      ha_enable: true
-      debug: false
-    - sn: "HW51ZOH4S_ERGAENZEN"
-      type: pstream800
-      name: "PS PV 07 Garten"
-      ha_enable: true
-      debug: false
-    - sn: "HW51ZOH4S_ERGAENZEN"
-      type: pstream800
-      name: "PS PV 08 Garten"
-      ha_enable: true
-      debug: false
+  devices: []
   poll_interval: 300
   mqtt_host: ""
   mqtt_port: 1883

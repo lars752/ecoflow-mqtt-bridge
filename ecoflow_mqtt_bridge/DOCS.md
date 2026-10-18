@@ -51,9 +51,7 @@ devices:
     type: delta2
 ```
 
-Die Standard-Liste enthält die 10 PowerStream-800W-Geräte der ioBroker-Instanz (PS Akku 1–3 links/rechts, PS PV 01/04/07/08
-Garten) mit Platzhalter-Seriennummern `HW51…_ERGAENZEN`. Die Seriennummern bitte vervollständigen; Einträge mit Platzhalter werden
-beim Start übersprungen.
+Standardmäßig ist die Liste leer. Ohne Geräte startet das Add-on trotzdem (mit Warnung), damit die Weboberfläche zum Erstellen der Anmeldedaten erreichbar ist. Einträge, deren Seriennummer den Platzhalter `…ERGAENZEN` enthält, werden übersprungen.
 
 Der **Gerätetyp** entscheidet im E-Mail-Modus, wie die Nachrichten gelesen werden:
 

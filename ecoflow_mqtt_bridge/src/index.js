@@ -24,6 +24,10 @@ async function main() {
     );
   }
 
+  if (!config.devices.length && config.authMode === 'email') {
+    logger.warn('Keine Geräte konfiguriert: Im E-Mail-Modus gibt es keine automatische Geräteliste. Seriennummern unter "Geräte" eintragen.');
+  }
+
   const persist = createPersister({ config, logger });
   const onCredentials = async (creds) => {
     addSecret(creds.password);
