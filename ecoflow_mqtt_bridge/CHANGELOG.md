@@ -1,5 +1,38 @@
 # Changelog
 
+## 3.4.0
+
+* **Konfiguration sichern und laden (JSON):** In der Weboberfläche (Seitenleiste „EcoFlow“, Abschnitt „Konfiguration sichern
+  und laden“) lässt sich die komplette Add-on-Konfiguration (Konten, Geräte, Broker, Optionen) als `ecoflow-config.json`
+  exportieren und wieder importieren. Passwörter und Keys sind im Export standardmäßig leer (optional mit Haken
+  aufnehmen); fehlen sie beim Import, werden sie aus der aktuellen Konfiguration übernommen (Konten über den Namen
+  zugeordnet).
+* Der Import prüft die Datei wie beim Start (Format, Kontozuordnung, Gerätetypen, doppelte Seriennummern), speichert sie
+  über den Supervisor und startet das Add-on auf Wunsch neu. Bei Fehlern wird nichts verändert.
+
+## 3.3.0
+
+* **Mehrere EcoFlow-Konten:** Das bisherige Konto (E-Mail/Passwort bzw. API-Keys auf oberster Ebene) bleibt unverändert und
+  kann mit `account_name` benannt werden. Weitere Konten kommen in die neue Liste `accounts` (Kontoname, E-Mail + Passwort oder
+  API-Keys, automatisch erzeugte MQTT-Zugangsdaten). Jedes Konto hat eigene Anmeldung, eigene Cloud-MQTT-Verbindung und
+  eigenen Status; alle teilen sich den lokalen Broker.
+* Geräte bleiben in einer gemeinsamen Liste; das neue Feld `account` ordnet ein Gerät einem Konto zu (leer = erstes Konto).
+  Seriennummern müssen über alle Konten eindeutig sein.
+* Weboberfläche: pro Konto ein Abschnitt mit „Anmeldedaten erstellen“ und eigener Geräteliste. Erzeugte Zugangsdaten werden
+  im jeweiligen Konto der Optionen gespeichert.
+* Neues Retained-Topic `<base>/accounts` (Liste der Konten) und Feld `account` im Meta-Topic; die Integration legt
+  damit pro Konto einen Hub an.
+
+## 3.2.0
+
+* Neues Retained-Topic `<base>/<sn>/meta` (Name, Gerätetyp, Datenpunkte mit Einheit, Geräteklasse, Primär-Flag) für die neue
+  Home-Assistant-Integration „EcoFlow“ (`custom_components/ecoflow_bridge`). Wird immer veröffentlicht, auch bei
+  `ha_discovery: false`; Geräte mit `ha_enable: false` bekommen keine Datenpunkte.
+
+## 3.1.2
+
+* Fix: `ecoflow_email` wird nicht mehr als E-Mail-Adresse validiert (Home Assistant lehnte das Speichern bei unvollständigen Eingaben mit „expected an email address“ ab). EcoFlow prüft die Anmeldung selbst.
+
 ## 3.1.1
 
 * Die vorbelegte Liste mit 10 PowerStream-800W-Geräten wurde entfernt; `devices` ist standardmäßig leer.

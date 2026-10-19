@@ -1,0 +1,5 @@
+{
+  "name": "EcoFlow MQTT Bridge",
+  "render_readme": true,
+  "homeassistant": "2024.8.0"
+}

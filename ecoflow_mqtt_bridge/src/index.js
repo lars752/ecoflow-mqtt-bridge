@@ -4,45 +4,53 @@ const { loadConfig } = require('./config');
 const { logger, setLevel, addSecret } = require('./log');
 const { createApp } = require('./app');
 const { createWebUi } = require('./webui');
-const { createPersister, saveOptions } = require('./credentials');
+const { createPersister, saveOptions, readOptions, restartSelf } = require('./credentials');
 const { version } = require('../package.json');
 
 async function main() {
   logger.info(`EcoFlow MQTT Bridge v${version} startet...`);
   const config = await loadConfig({ version });
   setLevel(config.logLevel);
-  [config.accessKey, config.secretKey, config.emailPassword, config.mqtt.password, config.presetMqtt?.password].forEach(addSecret);
+  for (const acc of config.accounts) {
+    [acc.accessKey, acc.secretKey, acc.emailPassword, acc.presetMqtt?.password].forEach(addSecret);
+  }
+  addSecret(config.mqtt.password);
 
+  const modeText = (acc) => (acc.authMode === 'email' ? 'E-Mail (App-Login)' : `API-Key (${acc.apiHost})`);
   logger.info(
-    `Konfiguration: Anmeldung ${config.authMode === 'email' ? 'E-Mail (App-Login)' : `API-Key (${config.apiHost})`}, lokaler Broker ${config.mqtt.host}:${config.mqtt.port}, ` +
-      `Discovery ${config.haDiscovery ? `an (${config.discoveryPrefix})` : 'aus'}, ${config.authMode === 'email' ? 'nur Live-MQTT' : `Abruf alle ${config.pollInterval}s`}`,
+    `Konfiguration: ${config.accounts.length} Konto/Konten (${config.accounts.map((a) => `${a.name}: ${modeText(a)}`).join('; ')}), ` +
+      `lokaler Broker ${config.mqtt.host}:${config.mqtt.port}, Discovery ${config.haDiscovery ? `an (${config.discoveryPrefix})` : 'aus'}`,
   );
 
-  if (config.skippedDevices.length) {
-    logger.warn(
-      `${config.skippedDevices.length} Gerät(e) ohne gültige Seriennummer übersprungen: ${config.skippedDevices.map((d) => d.name || d.sn).join(', ')}. Seriennummern in der Add-on-Konfiguration ergänzen.`,
-    );
+  for (const acc of config.accounts) {
+    if (acc.skippedDevices.length) {
+      logger.warn(
+        `Konto "${acc.name}": ${acc.skippedDevices.length} Gerät(e) ohne gültige Seriennummer übersprungen: ${acc.skippedDevices.map((d) => d.name || d.sn).join(', ')}. Seriennummern in der Add-on-Konfiguration ergänzen.`,
+      );
+    }
+    if (!acc.devices.length && acc.authMode === 'email') {
+      logger.warn(`Konto "${acc.name}": Keine Geräte konfiguriert. Im E-Mail-Modus gibt es keine automatische Geräteliste, Seriennummern unter "Geräte" eintragen (Feld "account" = Kontoname).`);
+    }
   }
 
-  if (!config.devices.length && config.authMode === 'email') {
-    logger.warn('Keine Geräte konfiguriert: Im E-Mail-Modus gibt es keine automatische Geräteliste. Seriennummern unter "Geräte" eintragen.');
-  }
-
-  const persist = createPersister({ config, logger });
-  const onCredentials = async (creds) => {
-    addSecret(creds.password);
-    await persist(creds);
+  // Neu erzeugte MQTT-Zugangsdaten je Konto in den Optionen speichern
+  const onCredentials = (account) => {
+    const persist = createPersister({ account, logger });
+    return async (creds) => {
+      addSecret(creds.password);
+      await persist(creds);
+    };
   };
   const app = createApp(config, logger, { onCredentials });
 
   // Weboberfläche (Ingress) vor dem Bridge-Start, damit "Anmeldedaten erstellen" auch bei Login-Problemen erreichbar ist
   const webui = createWebUi({
     config,
-    api: app.api,
-    cloud: app.cloud,
-    bridge: app,
+    app,
     logger,
     saveOptions: (patch) => saveOptions(patch),
+    readOptions: () => readOptions(),
+    restart: () => restartSelf(),
     allowAny: process.env.WEBUI_ALLOW_ANY === '1',
   });
   try {

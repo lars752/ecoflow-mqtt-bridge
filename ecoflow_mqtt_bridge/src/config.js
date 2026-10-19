@@ -23,6 +23,8 @@ function readOptionsFile(path) {
 
 const str = (v) => (typeof v === 'string' ? v.trim() : '');
 
+const slug = (t) => String(t).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+
 // Platzhalter-Seriennummern aus den Standardwerten (z. B. "HW51ZOH4S_ERGAENZEN") werden übersprungen
 const PLACEHOLDER_SN = /ERG(AE|Ä)NZEN/i;
 
@@ -30,12 +32,9 @@ const PLACEHOLDER_SN = /ERG(AE|Ä)NZEN/i;
 function normalize(raw, version = '0.0.0') {
   const errors = [];
 
-  const accessKey = str(raw.access_key);
-  const secretKey = str(raw.secret_key);
-  const email = str(raw.ecoflow_email);
-  const emailPassword = typeof raw.ecoflow_password === 'string' ? raw.ecoflow_password : '';
-  const devices = [];
-  const skippedDevices = [];
+  // --- Geräte (alle Konten in einer Liste; "account" ordnet ein Gerät einem Konto zu) ---
+  const allDevices = [];
+  const skippedAll = [];
   for (const [i, d] of (Array.isArray(raw.devices) ? raw.devices : []).entries()) {
     const entry = typeof d === 'string' ? { sn: d } : d || {};
     const sn = str(entry.sn);
@@ -43,8 +42,9 @@ function normalize(raw, version = '0.0.0') {
       if (typeof d !== 'string') errors.push(`devices[${i}]: sn fehlt`);
       continue;
     }
+    const accountRef = str(entry.account);
     if (PLACEHOLDER_SN.test(sn)) {
-      skippedDevices.push({ sn, name: str(entry.name) || null });
+      skippedAll.push({ sn, name: str(entry.name) || null, accountRef });
       continue;
     }
     const rawType = str(entry.type);
@@ -53,27 +53,107 @@ function normalize(raw, version = '0.0.0') {
       type = resolveType(rawType);
       if (!type) errors.push(`devices[${i}] (${sn}): unbekannter Gerätetyp "${rawType}". Erlaubt: ${listTypes().join(', ')}`);
     }
-    if (devices.some((x) => x.sn === sn)) errors.push(`devices[${i}]: Seriennummer ${sn} doppelt`);
-    devices.push({ sn, type, name: str(entry.name) || null, ha: entry.ha_enable !== false, debug: entry.debug === true });
+    if (allDevices.some((x) => x.sn === sn)) errors.push(`devices[${i}]: Seriennummer ${sn} doppelt`);
+    allDevices.push({ sn, type, name: str(entry.name) || null, ha: entry.ha_enable !== false, debug: entry.debug === true, accountRef });
   }
 
-  // Anmeldeart: 'api_key' (Developer API) oder 'email' (App-Login wie im ioBroker-Adapter)
-  const requested = ['auto', 'api_key', 'email'].includes(raw.auth_mode) ? raw.auth_mode : 'auto';
-  let authMode = requested;
-  if (requested === 'auto') {
-    if (accessKey && secretKey) authMode = 'api_key';
-    else if (email && emailPassword) authMode = 'email';
-    else authMode = null;
+  // --- Konten: das klassische Konto (oberste Ebene) plus weitere Konten aus "accounts" ---
+  const extraRaw = Array.isArray(raw.accounts) ? raw.accounts.filter((a) => a && typeof a === 'object') : [];
+  const legacyUsed =
+    !extraRaw.length || Boolean(str(raw.access_key) || str(raw.secret_key) || str(raw.ecoflow_email) || raw.ecoflow_password || str(raw.account_name));
+  const specs = [];
+  if (legacyUsed) {
+    specs.push({
+      legacy: true,
+      name: str(raw.account_name) || str(raw.ecoflow_email) || 'Konto 1',
+      optionPath: { type: 'root' },
+      authMode: raw.auth_mode,
+      accessKey: str(raw.access_key),
+      secretKey: str(raw.secret_key),
+      email: str(raw.ecoflow_email),
+      password: typeof raw.ecoflow_password === 'string' ? raw.ecoflow_password : '',
+      apiHost: raw.api_host,
+      mqtt: { userId: raw.ecoflow_mqtt_user_id, username: raw.ecoflow_mqtt_username, password: raw.ecoflow_mqtt_password, clientId: raw.ecoflow_mqtt_client_id },
+    });
   }
-  if (!authMode) {
-    errors.push('Keine Zugangsdaten: entweder access_key + secret_key (Developer API) oder ecoflow_email + ecoflow_password (App-Login) eintragen');
-  } else if (authMode === 'api_key') {
-    if (!accessKey) errors.push('access_key fehlt (EcoFlow Developer Portal: Access Key)');
-    if (!secretKey) errors.push('secret_key fehlt (EcoFlow Developer Portal: Secret Key)');
-  } else {
-    if (!email) errors.push('ecoflow_email fehlt');
-    if (!emailPassword) errors.push('ecoflow_password fehlt');
+  for (const [i, a] of extraRaw.entries()) {
+    specs.push({
+      legacy: false,
+      name: str(a.name) || str(a.email) || `Konto ${specs.length + 1}`,
+      optionPath: { type: 'account', index: i },
+      authMode: a.auth_mode,
+      accessKey: str(a.access_key),
+      secretKey: str(a.secret_key),
+      email: str(a.email),
+      password: typeof a.password === 'string' ? a.password : '',
+      apiHost: a.api_host,
+      mqtt: { userId: a.mqtt_user_id, username: a.mqtt_username, password: a.mqtt_password, clientId: a.mqtt_client_id },
+    });
   }
+
+  const accounts = [];
+  for (const spec of specs) {
+    const where = spec.legacy && specs.length === 1 ? '' : `Konto "${spec.name}": `;
+    // Anmeldeart: 'api_key' (Developer API) oder 'email' (App-Login wie im ioBroker-Adapter)
+    const requested = ['auto', 'api_key', 'email'].includes(spec.authMode) ? spec.authMode : 'auto';
+    let authMode = requested;
+    if (requested === 'auto') {
+      if (spec.accessKey && spec.secretKey) authMode = 'api_key';
+      else if (spec.email && spec.password) authMode = 'email';
+      else authMode = null;
+    }
+    if (!authMode) {
+      errors.push(`${where}Keine Zugangsdaten: entweder access_key + secret_key (Developer API) oder ecoflow_email + ecoflow_password (App-Login) eintragen`);
+    } else if (authMode === 'api_key') {
+      if (!spec.accessKey) errors.push(`${where}access_key fehlt (EcoFlow Developer Portal: Access Key)`);
+      if (!spec.secretKey) errors.push(`${where}secret_key fehlt (EcoFlow Developer Portal: Secret Key)`);
+    } else {
+      if (!spec.email) errors.push(`${where}ecoflow_email fehlt`);
+      if (!spec.password) errors.push(`${where}ecoflow_password fehlt`);
+    }
+    const presetUser = str(spec.mqtt.username);
+    const presetPass = typeof spec.mqtt.password === 'string' ? spec.mqtt.password : '';
+    accounts.push({
+      id: slug(spec.name) || `konto_${accounts.length + 1}`,
+      name: spec.name,
+      optionPath: spec.optionPath,
+      authMode,
+      accessKey: spec.accessKey,
+      secretKey: spec.secretKey,
+      email: spec.email,
+      emailPassword: spec.password,
+      apiHost: str(spec.apiHost).replace(/^https?:\/\//, '').replace(/\/+$/, '') || 'api-e.ecoflow.com',
+      presetMqtt:
+        presetUser && presetPass
+          ? { account: presetUser, password: presetPass, userId: str(spec.mqtt.userId) || null, clientId: str(spec.mqtt.clientId) || null }
+          : null,
+      devices: [],
+      skippedDevices: [],
+    });
+  }
+  if (new Set(accounts.map((a) => a.id)).size !== accounts.length) {
+    errors.push(`Kontonamen müssen eindeutig sein (aktuell: ${accounts.map((a) => a.name).join(', ')})`);
+  }
+
+  // Geräte den Konten zuordnen (ohne Angabe: erstes Konto)
+  const findAccount = (ref) => (ref ? accounts.find((a) => a.id === slug(ref) || slug(a.email) === slug(ref)) : accounts[0]);
+  for (const d of allDevices) {
+    const acc = findAccount(d.accountRef);
+    if (!acc) {
+      errors.push(`Gerät ${d.sn}: unbekanntes Konto "${d.accountRef}" (Kontonamen: ${accounts.map((a) => a.name).join(', ')})`);
+      continue;
+    }
+    const { accountRef, ...dev } = d;
+    acc.devices.push(dev);
+  }
+  for (const d of skippedAll) {
+    const acc = findAccount(d.accountRef);
+    if (acc) acc.skippedDevices.push({ sn: d.sn, name: d.name });
+  }
+
+  // Bequemlichkeit/Abwärtskompatibilität: Felder des ersten Kontos auch auf oberster Ebene
+  const first = accounts[0];
+  const { authMode, accessKey, secretKey, email, emailPassword, apiHost, presetMqtt, devices, skippedDevices } = first;
 
   // Verbindungseinstellungen der EcoFlow-Cloud (E-Mail-Modus), Vorgabe wie im ioBroker-Adapter
   let ecoflowBroker = null;
@@ -86,21 +166,6 @@ function normalize(raw, version = '0.0.0') {
     else if (!Number.isInteger(brokerPort) || brokerPort < 1 || brokerPort > 65535) errors.push(`ecoflow_mqtt_port ungültig: ${raw.ecoflow_mqtt_port}`);
     else ecoflowBroker = { protocol, host: brokerHost, port: brokerPort };
   }
-  // Automatisch erzeugte Zugangsdaten (siehe Anmeldedaten erstellen)
-  const presetUser = str(raw.ecoflow_mqtt_username);
-  const presetPass = typeof raw.ecoflow_mqtt_password === 'string' ? raw.ecoflow_mqtt_password : '';
-  const presetMqtt =
-    presetUser && presetPass
-      ? {
-          account: presetUser,
-          password: presetPass,
-          userId: str(raw.ecoflow_mqtt_user_id) || null,
-          clientId: str(raw.ecoflow_mqtt_client_id) || null,
-        }
-      : null;
-
-  const apiHost = str(raw.api_host).replace(/^https?:\/\//, '').replace(/\/+$/, '') || 'api-e.ecoflow.com';
-
   const pollInterval = Math.min(3600, Math.max(30, Number(raw.poll_interval) || 300));
 
   const host = str(raw.mqtt_host).replace(/^mqtts?:\/\//, '').replace(/:\d+$/, '');
@@ -150,6 +215,9 @@ function normalize(raw, version = '0.0.0') {
     apiHost,
     devices,
     skippedDevices,
+    accounts,
+    accountId: first.id,
+    accountName: first.name,
     ecoflowBroker,
     presetMqtt,
     pollInterval,

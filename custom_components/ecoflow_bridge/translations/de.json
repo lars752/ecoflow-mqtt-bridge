@@ -1,0 +1,68 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "EcoFlow hinzufügen",
+        "description": "Einen neuen Hub einrichten oder die Hubs aus einer gesicherten JSON-Konfiguration laden.",
+        "menu_options": {
+          "hub": "Neuen Hub einrichten",
+          "import_json": "Konfiguration aus JSON laden"
+        }
+      },
+      "account": {
+        "title": "EcoFlow-Konto wählen",
+        "description": "Welches EcoFlow-Konto des Add-ons soll dieser Hub darstellen? Für weitere Konten die Integration erneut hinzufügen.",
+        "data": {
+          "account_id": "EcoFlow-Konto"
+        }
+      },
+      "manual": {
+        "title": "Hub benennen",
+        "description": "Dieses Add-on meldet keine Kontenliste (ältere Version). Der Hub enthält dann alle Geräte. Bitte einen Anzeigenamen eingeben.",
+        "data": {
+          "account": "Name des Hubs"
+        }
+      },
+      "hub": {
+        "title": "EcoFlow-Hub hinzufügen",
+        "description": "Verbindet Home Assistant mit dem Add-on „EcoFlow MQTT Bridge“. Das Add-on muss laufen; im nächsten Schritt wählst du eines seiner EcoFlow-Konten. Jedes Konto wird ein eigener Hub mit seinen Geräten.\n\nTipp: Im Add-on „Home Assistant Auto-Discovery“ ausschalten, damit die Sensoren nicht doppelt entstehen.",
+        "data": {
+          "base_topic": "Basis-Topic des Add-ons"
+        },
+        "data_description": {
+          "base_topic": "Standard: ecoflow_bridge"
+        }
+      },
+      "import_json": {
+        "title": "Konfiguration aus JSON laden",
+        "description": "Den zuvor exportierten Text einfügen (Export: Einstellungen des EcoFlow-Hubs → Konfigurieren). Bereits eingerichtete Hubs werden übersprungen, die übrigen angelegt.",
+        "data": {
+          "config": "Konfiguration (JSON)"
+        }
+      }
+    },
+    "error": {
+      "bridge_not_found": "Das Add-on meldet sich unter diesem Basis-Topic nicht. Läuft „EcoFlow MQTT Bridge“ und ist der MQTT-Broker derselbe?",
+      "invalid_topic": "Ungültiges Basis-Topic (keine Platzhalter + oder # erlaubt).",
+      "invalid_json": "Kein gültiges JSON.",
+      "invalid_format": "Das ist keine gültige EcoFlow-Konfiguration (erwartet: Export dieser Integration).",
+      "nothing_to_import": "Alle enthaltenen Hubs sind bereits eingerichtet."
+    },
+    "abort": {
+      "already_configured": "Dieser Hub ist bereits eingerichtet.",
+      "mqtt_unavailable": "Die MQTT-Integration ist nicht eingerichtet oder nicht verbunden.",
+      "no_accounts_left": "Alle EcoFlow-Konten dieses Add-ons sind bereits als Hub eingerichtet."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Konfiguration sichern",
+        "description": "Diesen Text kopieren und speichern. Über „EcoFlow hinzufügen → Konfiguration aus JSON laden“ lassen sich die Hubs damit wiederherstellen. Änderungen im Feld werden nicht übernommen.",
+        "data": {
+          "config": "Konfiguration (JSON)"
+        }
+      }
+    }
+  }
+}

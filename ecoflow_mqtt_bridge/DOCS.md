@@ -182,3 +182,54 @@ Eine ungültige `device_class` lehnt Home Assistant ab – nur Standard-Klassen 
 * **Gerät bleibt offline (E-Mail-Modus)**: Seriennummer prüfen; Warnungen im Log lesen (fehlender oder falscher Gerätetyp).
 * **Sensoren fehlen in HA**: Die meisten sind standardmäßig deaktiviert (`enable_all_entities` oder in HA einzeln aktivieren).
 * **Werte unplausibel**: Gerätetyp prüfen, mit `log_level: debug` Rohdaten ansehen, notfalls per `overrides` skalieren.
+
+## Mehrere EcoFlow-Konten
+
+Das Konto auf oberster Ebene (`ecoflow_email`/`ecoflow_password` oder `access_key`/`secret_key`) ist das erste Konto; mit
+`account_name` gibst du ihm einen Namen (leer = E-Mail-Adresse). Jedes weitere Konto ist ein Eintrag in `accounts`:
+
+```yaml
+account_name: Haus
+ecoflow_email: haus@example.com
+ecoflow_password: "…"
+accounts:
+  - name: Garten
+    email: garten@example.com
+    password: "…"
+  - name: Werkstatt
+    access_key: "…"      # alternativ API-Keys statt E-Mail/Passwort
+    secret_key: "…"
+devices:
+  - sn: HW51…            # ohne "account": erstes Konto (Haus)
+    type: pstream800
+    name: PS Haus
+  - sn: HW51…
+    type: pstream800
+    name: PS Garten
+    account: Garten      # Kontoname aus "accounts"
+```
+
+* Kontonamen müssen eindeutig sein; im Feld `account` eines Geräts geht auch die E-Mail-Adresse des Kontos.
+* Seriennummern dürfen nur einmal vorkommen (ein Gerät gehört zu genau einem Konto).
+* In der Weboberfläche (Seitenleiste **EcoFlow**) hat jedes Konto einen eigenen Abschnitt mit **Anmeldedaten erstellen**.
+  Die erzeugten MQTT-Zugangsdaten werden im jeweiligen Konto gespeichert (`mqtt_user_id`, `mqtt_username`, `mqtt_password`,
+  `mqtt_client_id`; beim ersten Konto die Optionen `ecoflow_mqtt_*`).
+* Jedes Konto verbindet sich separat mit der EcoFlow-Cloud (eigene Client-ID); im Log stehen die Meldungen mit `[Kontoname]`.
+* Wird ein Konto umbenannt, ändert sich seine interne ID: in Home Assistant den Hub dieses Kontos neu hinzufügen.
+
+## Konfiguration sichern und laden
+
+Seitenleiste **EcoFlow** → Abschnitt „Konfiguration sichern und laden“:
+
+* **Konfiguration exportieren** lädt `ecoflow-config.json` herunter (Format `ecoflow-mqtt-bridge-config`). Ohne Haken bei
+  „Passwörter und Keys aufnehmen“ sind alle Passwörter leer. Eine Datei mit Passwörtern bitte sicher aufbewahren.
+* **Importieren:** JSON-Datei wählen (oder Text einfügen) und auf „Importieren“ klicken. Das Add-on prüft die Konfiguration,
+  ersetzt die aktuellen Optionen und startet auf Wunsch neu. Leere Passwörter in der Datei werden durch die aktuellen ersetzt.
+  Ist die Datei ungültig (z. B. Gerät mit unbekanntem Konto), bleibt alles unverändert und die Fehlermeldung wird angezeigt.
+* Es werden nur die Add-on-Optionen gesichert, keine Laufzeitdaten.
+
+## Home-Assistant-Integration „EcoFlow“
+
+Statt der MQTT-Discovery kann die Integration `custom_components/ecoflow_bridge` (siehe README im Repository) die Geräte als
+Hub mit Geräten und Entitäten anlegen. Dazu `ha_discovery` auf `false` stellen. Das Add-on veröffentlicht die dafür nötige
+Gerätebeschreibung immer unter `<base_topic>/<Seriennummer>/meta`.

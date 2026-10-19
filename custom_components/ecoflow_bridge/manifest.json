@@ -1,0 +1,17 @@
+{
+  "domain": "ecoflow_bridge",
+  "name": "EcoFlow",
+  "codeowners": [
+    "@lars752"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "mqtt"
+  ],
+  "documentation": "https://github.com/lars752/ecoflow-mqtt-bridge",
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/lars752/ecoflow-mqtt-bridge/issues",
+  "requirements": [],
+  "version": "1.2.0"
+}

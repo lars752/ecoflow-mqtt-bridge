@@ -18,7 +18,13 @@ class LocalMqtt extends EventEmitter {
     this.client = null;
   }
 
+  /** Mehrere Konten teilen sich eine Verbindung: weitere Aufrufe liefern dasselbe Ergebnis. */
   connect() {
+    if (!this.connecting) this.connecting = this.open();
+    return this.connecting;
+  }
+
+  open() {
     const { host, port, username, password, tls } = this.cfg;
     this.log.info(`Verbinde mit lokalem MQTT-Broker ${host}:${port}`);
     this.client = this.mqtt.connect({
@@ -63,7 +69,8 @@ class LocalMqtt extends EventEmitter {
 
   async stop() {
     const c = this.client;
-    if (!c) return;
+    if (!c || this.stopped) return;
+    this.stopped = true;
     if (c.connected) {
       await new Promise((r) => c.publish(`${this.base}/status`, 'offline', { retain: true, qos: 1 }, () => r()));
     }
