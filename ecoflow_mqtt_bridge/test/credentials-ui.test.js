@@ -112,9 +112,10 @@ function makeUi({ allowAny = true, fetchOk = true } = {}) {
   const calls = { reconnect: 0, saved: [] };
   const cloud = { reconnectNow: async () => void calls.reconnect++ };
   const bridge = { devices: new Map([['HW51ZOH4SABCDEF1', { sn: 'HW51ZOH4SABCDEF1', name: 'PS <b>1</b>', type: 'pstream', ha: true, debug: false, online: true }]]) };
+  const app = { accounts: [{ id: config.accounts[0].id, name: config.accounts[0].name, config: config.accounts[0], api, cloud, bridge }] };
   const logger = { debug() {}, info() {}, warn() {}, error() {} };
-  const ui = createWebUi({ config, api, cloud, bridge, logger, saveOptions: async (p) => void calls.saved.push(p), allowAny });
-  return { ui, calls, config, api, bridge, seen };
+  const ui = createWebUi({ config, app, logger, saveOptions: async (p) => void calls.saved.push(typeof p === 'function' ? p({}) : p), allowAny });
+  return { ui, calls, config, api, bridge, app, seen };
 }
 
 const request = (port, method, urlPath, { headers = {}, body } = {}) =>
@@ -140,7 +141,7 @@ test('WebUI: Seite escaped Werte und zeigt Maske; Zugriff nur über Ingress', as
   t.after(() => ui.close());
   const page = await request(port, 'GET', '/');
   assert.equal(page.status, 200);
-  assert.match(page.body, /Anmeldedaten erstellen/);
+  assert.match(page.body, /Anmeldedaten erstellen/); assert.ok(!page.body.includes('class="acc"'), 'bei einem Konto keine Kontoüberschrift');
   assert.match(page.body, /mqtts:\/\/mqtt-e\.ecoflow\.com/);
   assert.ok(!page.body.includes('PS <b>1</b>'), 'Gerätename muss escaped sein');
   assert.match(page.body, /PS &lt;b&gt;1&lt;\/b&gt;/);
@@ -184,9 +185,9 @@ test('WebUI: falsches Passwort -> Fehlermeldung, nichts gespeichert', async (t) 
 
 test('renderPage: API-Key-Modus zeigt Hinweis statt Anmeldemaske', () => {
   const config = normalize({ access_key: 'a', secret_key: 'b' });
-  const html = renderPage(viewModel({ config, api: {}, bridge: { devices: new Map() } }));
+  const html = renderPage(viewModel({ config, app: { accounts: [{ id: config.accounts[0].id, name: config.accounts[0].name, config: config.accounts[0], api: {}, bridge: { devices: new Map() } }] } }));
   assert.match(html, /nur im E-Mail-Modus aktiv/);
-  assert.ok(!html.includes('id="create"'));
+  assert.ok(!html.includes('class="create"'));
 });
 
 test('saveOptions/createPersister: Optionen zusammenführen, Supervisor-Aufruf, kein Überschreiben bei Folgespeichern', async () => {
@@ -202,9 +203,9 @@ test('saveOptions/createPersister: Optionen zusammenführen, Supervisor-Aufruf, 
   const env = { SUPERVISOR_TOKEN: 'T' };
   await saveOptions({ ecoflow_email: 'neu@b.de' }, { env, fetchImpl, optionsPath: file });
   // options.json wurde (noch) nicht neu geschrieben -> zweiter Speichervorgang darf die E-Mail nicht verlieren
-  const config = { presetMqtt: null };
+  const config = { name: 'Konto 1', optionPath: { type: 'root' }, presetMqtt: null };
   const logger = { info() {}, warn() {} };
-  const persist = createPersister({ config, logger, env, fetchImpl, optionsPath: file });
+  const persist = createPersister({ account: config, logger, env, fetchImpl, optionsPath: file });
   await persist({ userId: '4711', account: 'app-new', password: 'pw-new', clientId: 'ANDROID_x_4711' });
   assert.equal(bodies[0].url, 'http://supervisor/addons/self/options');
   assert.equal(bodies[0].auth, 'Bearer T');

@@ -103,6 +103,8 @@ class Bridge {
         state: Object.create(null),
         specs: new Map(),
         entities: new Map(), // key -> { topic, payload }
+        meta: new Map(), // key -> Beschreibung für die HA-Integration
+        metaDirty: false,
         slugs: new Map(), // slug -> key
         publishTimer: null,
       });
@@ -130,11 +132,21 @@ class Bridge {
     const meta = dev.type ? lookupMeta(dev.type, key) : undefined;
     const spec = describeEntity(key, value, this.cfg.overrides, meta);
     dev.specs.set(key, spec);
-    if (!this.cfg.haDiscovery || !dev.ha || spec.ignore) return;
+    if (!dev.ha || spec.ignore) return;
 
     let entitySlug = slug(key);
     if (dev.slugs.has(entitySlug) && dev.slugs.get(entitySlug) !== key) entitySlug += `_${shortHash(key)}`;
     dev.slugs.set(entitySlug, key);
+
+    // Beschreibung für die Home-Assistant-Integration "EcoFlow" (Topic <base>/<sn>/meta)
+    const entry = { slug: entitySlug, name: spec.name, primary: spec.primary === true, enabled: spec.primary === true || this.cfg.enableAllEntities === true };
+    if (spec.unit) entry.unit = spec.unit;
+    if (spec.deviceClass) entry.device_class = spec.deviceClass;
+    if (spec.stateClass) entry.state_class = spec.stateClass;
+    dev.meta.set(key, entry);
+    dev.metaDirty = true;
+
+    if (!this.cfg.haDiscovery) return;
 
     const discovery = buildDiscovery({ sn: dev.sn, deviceName: dev.name, key, spec, entitySlug, cfg: this.cfg });
     dev.entities.set(key, discovery);
@@ -167,7 +179,22 @@ class Bridge {
     }, PUBLISH_DEBOUNCE_MS);
   }
 
+  /** Gerätebeschreibung (Name, Typ, Datenpunkte) für die Home-Assistant-Integration, retained. */
+  publishMeta(dev) {
+    dev.metaDirty = false;
+    const payload = {
+      sn: dev.sn,
+      account: this.cfg.accountId ?? null,
+      name: dev.name,
+      type: dev.type,
+      version: this.cfg.version,
+      entities: Object.fromEntries(dev.meta),
+    };
+    this.local.publish(`${this.cfg.baseTopic}/${dev.sn}/meta`, JSON.stringify(payload), { retain: true, qos: 1 });
+  }
+
   publishState(dev) {
+    if (dev.metaDirty) this.publishMeta(dev);
     const out = {};
     for (const [key, value] of Object.entries(dev.state)) {
       out[key] = scaleValue(value, dev.specs.get(key) ?? {});
@@ -182,6 +209,7 @@ class Bridge {
         this.local.publish(d.topic, JSON.stringify(d.payload), { retain: true, qos: 1 });
       }
       this.publishAvailability(dev);
+      if (dev.meta.size) this.publishMeta(dev);
       if (Object.keys(dev.state).length) this.publishState(dev);
     }
   }

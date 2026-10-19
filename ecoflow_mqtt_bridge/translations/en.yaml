@@ -1,4 +1,44 @@
 configuration:
+  account_name:
+    name: Account name
+    description: 'Display name of the first account (top level, email/API key). Used as hub name in Home Assistant. Empty = email address.'
+  accounts:
+    name: Additional EcoFlow accounts
+    description: 'Add one entry per additional EcoFlow account (account name, email + password or API keys). Devices are assigned in the "Devices" list via the "Account" field.'
+    fields:
+      name:
+        name: 'Account name'
+        description: 'Unique name; used in the "Account" field of devices and shown as hub in Home Assistant.'
+      auth_mode:
+        name: 'Sign-in mode'
+        description: 'auto = Developer API keys if set, otherwise email/password.'
+      email:
+        name: 'Email address'
+        description: 'Name/email address of the EcoFlow account.'
+      password:
+        name: 'Password'
+        description: 'Password of the EcoFlow account.'
+      access_key:
+        name: 'Access key'
+        description: 'API key mode only (EcoFlow Developer Portal).'
+      secret_key:
+        name: 'Secret key'
+        description: 'API key mode only (EcoFlow Developer Portal).'
+      api_host:
+        name: 'API host'
+        description: 'Developer API region (API key mode only).'
+      mqtt_user_id:
+        name: 'mqtt user ID (automatic)'
+        description: 'Filled in automatically when credentials are created.'
+      mqtt_username:
+        name: 'mqtt username (automatic)'
+        description: 'Generated automatically and stored here.'
+      mqtt_password:
+        name: 'mqtt pwd (automatic)'
+        description: 'Generated automatically and stored here.'
+      mqtt_client_id:
+        name: 'mqtt client ID (automatic)'
+        description: 'Generated automatically and stored here.'
   auth_mode:
     name: Login method
     description: auto = developer API keys if set, otherwise email/password. Or force api_key / email.
@@ -48,6 +88,9 @@ configuration:
       name:
         name: Display name
         description: 'Optional: name of the device in Home Assistant.'
+      account:
+        name: Account
+        description: 'Optional: account name of the device (see "Additional EcoFlow accounts"). Empty = first account.'
       ha_enable:
         name: HA enable
         description: Off = do not create Home Assistant entities for this device (values are still published via MQTT).

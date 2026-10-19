@@ -1,4 +1,44 @@
 configuration:
+  account_name:
+    name: Kontoname
+    description: 'Anzeigename des ersten Kontos (oberste Ebene, E-Mail/API-Key). Wird als Hub-Name in Home Assistant verwendet. Leer = E-Mail-Adresse.'
+  accounts:
+    name: Weitere EcoFlow-Konten
+    description: 'Für jedes zusätzliche EcoFlow-Konto einen Eintrag anlegen (Kontoname, E-Mail + Passwort oder API-Keys). Geräte werden in der Liste „Geräte“ über das Feld „Konto“ zugeordnet.'
+    fields:
+      name:
+        name: 'Kontoname'
+        description: 'Eindeutiger Name; wird im Feld „Konto“ der Geräte verwendet und in Home Assistant als Hub angezeigt.'
+      auth_mode:
+        name: 'Anmeldeart'
+        description: 'auto = Developer-API-Keys, falls eingetragen, sonst E-Mail/Passwort.'
+      email:
+        name: 'E-Mail-Adresse'
+        description: 'Name/E-Mail-Adresse des EcoFlow-Kontos.'
+      password:
+        name: 'Passwort'
+        description: 'Passwort des EcoFlow-Kontos.'
+      access_key:
+        name: 'Access Key'
+        description: 'Nur für den API-Key-Modus (EcoFlow Developer Portal).'
+      secret_key:
+        name: 'Secret Key'
+        description: 'Nur für den API-Key-Modus (EcoFlow Developer Portal).'
+      api_host:
+        name: 'API-Host'
+        description: 'Region der Developer API (nur API-Key-Modus).'
+      mqtt_user_id:
+        name: 'mqtt-Benutzer-ID (automatisch)'
+        description: 'Wird beim Erstellen der Anmeldedaten automatisch eingetragen.'
+      mqtt_username:
+        name: 'mqtt-Benutzername (automatisch)'
+        description: 'Wird automatisch erzeugt und hier gespeichert.'
+      mqtt_password:
+        name: 'mqtt pwd (automatisch)'
+        description: 'Wird automatisch erzeugt und hier gespeichert.'
+      mqtt_client_id:
+        name: 'mqtt-Client-ID (automatisch)'
+        description: 'Wird automatisch erzeugt und hier gespeichert.'
   auth_mode:
     name: Anmeldeart
     description: auto = Developer-API-Keys, falls eingetragen, sonst E-Mail/Passwort. Oder fest api_key bzw. email wählen.
@@ -48,6 +88,9 @@ configuration:
       name:
         name: Anzeigename
         description: 'Optional: Name des Geräts in Home Assistant.'
+      account:
+        name: Konto
+        description: 'Optional: Kontoname des Geräts (siehe „Weitere EcoFlow-Konten“). Leer = erstes Konto.'
       ha_enable:
         name: HA enable
         description: Aus = für dieses Gerät keine Home-Assistant-Entities anlegen (Werte werden weiter per MQTT veröffentlicht).

@@ -1,6 +1,6 @@
 name: "EcoFlow MQTT Bridge"
 description: "EcoFlow-Geräte (Anmeldung per E-Mail/Passwort wie in ioBroker oder Developer-API-Keys) lokal per MQTT bereitstellen, inkl. Home Assistant Auto-Discovery"
-version: "3.1.1"
+version: "3.4.0"
 slug: "ecoflow_mqtt_bridge"
 url: "https://github.com/lars752/ecoflow-mqtt-bridge"
 arch:
@@ -16,6 +16,8 @@ panel_title: "EcoFlow"
 services:
   - mqtt:want
 options:
+  account_name: ""
+  accounts: []
   auth_mode: "auto"
   ecoflow_email: ""
   ecoflow_password: ""
@@ -40,8 +42,21 @@ options:
   overrides: []
   log_level: "info"
 schema:
+  account_name: str?
+  accounts:
+    - name: str
+      auth_mode: list(auto|api_key|email)?
+      email: str?
+      password: password?
+      access_key: password?
+      secret_key: password?
+      api_host: list(api-e.ecoflow.com|api-a.ecoflow.com)?
+      mqtt_user_id: str?
+      mqtt_username: str?
+      mqtt_password: password?
+      mqtt_client_id: str?
   auth_mode: list(auto|api_key|email)
-  ecoflow_email: email?
+  ecoflow_email: str?
   ecoflow_password: password?
   ecoflow_mqtt_broker: str?
   ecoflow_mqtt_port: port?
@@ -56,6 +71,7 @@ schema:
     - sn: str
       type: list(alternator|delta|delta2|delta2max|delta3|delta3classic|delta3maxplus|delta3plus|deltamax|deltamini|deltapro|deltapro3|deltaproultra|generator|glacier|glacier55|gnerator4k|panel|panel2|plug|powerkit|powerkitbp2000|powerkitbp5000|powerocean|poweroceanfit|poweroceanplus|pstream|pstream600|pstream800|rapidpro320|river2max|river2pro|river3|river3plus|rivermax|riverpro|shelly3em|smartmeter|stream_ac|stream_ac_pro|stream_inverter|stream_ultra|stream_ultra_x|wave2|wave3)?
       name: str?
+      account: str?
       ha_enable: bool?
       debug: bool?
   poll_interval: int(30,3600)
