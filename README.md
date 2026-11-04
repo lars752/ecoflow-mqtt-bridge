@@ -40,3 +40,7 @@ standardmäßig deaktiviert und lassen sich in Home Assistant einzeln aktivieren
 Ein Gerät mit `ha_enable: false` im Add-on bekommt keine Entitäten.
 
 Entwicklung: `cd ecoflow_mqtt_bridge && npm ci && npm test`; Integration: `pip install -r requirements_test.txt && pytest`
+
+## Lizenz
+
+MIT, siehe [LICENSE](LICENSE). Das Add-on enthält Daten und Abläufe aus dem Projekt ioBroker.ecoflow-mqtt (MIT, foxthefox); der zugehörige Hinweis steht in [ecoflow_mqtt_bridge/NOTICE.md](ecoflow_mqtt_bridge/NOTICE.md).
